@@ -1,0 +1,11 @@
+[package]
+name = "ssvm_wasm_socket"
+version = "0.1.0"
+authors = [ "Yi <yi@secondstate.io>" ]
+edition = "2018"
+
+[lib]
+name = "ssvm_wasm_socket"
+path = "src/lib.rs"
+
+[dependencies]
