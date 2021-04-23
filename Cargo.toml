@@ -8,4 +8,7 @@ edition = "2018"
 name = "ssvm_wasm_socket"
 path = "src/lib.rs"
 
+[features]
+std = []
+
 [dependencies]
