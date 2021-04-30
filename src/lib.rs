@@ -34,6 +34,9 @@ pub struct TcpStream;
 #[non_exhaustive]
 pub struct TcpListener;
 
+#[non_exhaustive]
+pub struct UdpSocket;
+
 impl TcpStream {
     pub fn connect<A: ToSocketAddrs>(addr: A) -> Result<TcpStream> {
         todo!();
@@ -63,6 +66,18 @@ impl TcpListener {
         todo!();
     }
     pub fn accept(&self) -> Result<(TcpStream, SocketAddr)> {
+        todo!();
+    }
+}
+
+impl UdpSocket {
+    pub fn bind<A: ToSocketAddrs>(addr: A) -> Result<UdpSocket> {
+        todo!();
+    }
+    pub fn recv_from(&self, buf: &mut [u8]) -> Result<(usize, SocketAddr)> {
+        todo!();
+    }
+    pub fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: A) -> Result<usize> {
         todo!();
     }
 }
