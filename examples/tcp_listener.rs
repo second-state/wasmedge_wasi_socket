@@ -1,8 +1,8 @@
-#[cfg(not(feature = "std"))]
-use ssvm_wasm_socket::{Shutdown, TcpListener, TcpStream};
 use std::io::{Read, Write};
 #[cfg(feature = "std")]
 use std::net::{Shutdown, TcpListener, TcpStream};
+#[cfg(not(feature = "std"))]
+use w13e_wasi_socket::{Shutdown, TcpListener, TcpStream};
 
 fn handle_client(mut stream: TcpStream) -> std::io::Result<()> {
     let mut buf = String::new();

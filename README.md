@@ -1,1 +1,1 @@
-# ssvm_wasm_socket
+# WasmEdge WASI Socket

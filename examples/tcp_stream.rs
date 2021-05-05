@@ -1,8 +1,8 @@
-#[cfg(not(feature = "std"))]
-use ssvm_wasm_socket::{Shutdown, TcpStream};
 use std::io::{Read, Write};
 #[cfg(feature = "std")]
 use std::net::{Shutdown, TcpStream};
+#[cfg(not(feature = "std"))]
+use w13e_wasi_socket::{Shutdown, TcpStream};
 
 fn main() -> std::io::Result<()> {
     let port = std::env::var("PORT").unwrap_or(0.to_string());
