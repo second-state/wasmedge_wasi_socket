@@ -1,0 +1,20 @@
+name: format check
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  cargo_fmt_check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: setup cargo
+      run: |
+        curl https://sh.rustup.rs -sSf | sh -s -- -y
+    - name: cargo fmt check
+      run: |
+        export PATH="$HOME/.cargo/bin:$PATH"
+        cargo fmt -- --check
