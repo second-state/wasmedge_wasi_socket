@@ -93,6 +93,10 @@ macro_rules! impl_as_raw_fd {
 impl_as_raw_fd! { TcpStream TcpListener UdpSocket }
 
 impl TcpStream {
+    /// Create TCP socket and connect to the given address.
+    ///
+    /// If multiple address is given, the first successful socket is
+    /// returned.
     pub fn connect<A: ToSocketAddrs>(addrs: A) -> Result<TcpStream> {
         match addrs.to_socket_addrs()?.find_map(|addr| unsafe {
             let fd = SocketHandle(ssvm_sock_open(
@@ -149,6 +153,10 @@ impl Write for TcpStream {
 }
 
 impl TcpListener {
+    /// Create TCP socket and bind to the given address.
+    ///
+    /// If multiple address is given, the first successful socket is
+    /// returned.
     pub fn bind<A: ToSocketAddrs>(addrs: A) -> Result<TcpListener> {
         match addrs.to_socket_addrs()?.find_map(|addr| unsafe {
             let fd = ssvm_sock_open(AddressFamily::from(addr) as u8, SocketType::Stream as u8);
@@ -170,6 +178,10 @@ impl TcpListener {
 }
 
 impl UdpSocket {
+    /// Create UDP socket and bind to the given address.
+    ///
+    /// If multiple address is given, the first successful socket is
+    /// returned.
     pub fn bind<A: ToSocketAddrs>(addrs: A) -> Result<UdpSocket> {
         match addrs.to_socket_addrs()?.find_map(|addr| unsafe {
             let fd = ssvm_sock_open(AddressFamily::from(addr) as u8, SocketType::Datagram as u8);
