@@ -14,4 +14,4 @@ ENV PATH=/root/.cargo/bin:$PATH
 RUN rustup update \
     && rustup toolchain install $RUST_TOOLCHAIN \
     && rustup default $RUST_TOOLCHAIN \
-    && rustup target add wasm32-unknown-unknown --toolchain $RUST_TOOLCHAIN
+    && rustup target add wasm32-wasi --toolchain $RUST_TOOLCHAIN
