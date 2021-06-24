@@ -16,7 +16,6 @@ fn handle_client(mut stream: TcpStream) -> std::io::Result<()> {
 }
 
 fn main() -> std::io::Result<()> {
-    let port = std::env::var("PORT").unwrap_or(0.to_string());
-    let listener = TcpListener::bind(format!("127.0.0.1:{}", port))?;
+    let listener = TcpListener::bind("127.0.0.1:1234")?;
     handle_client(listener.accept()?.0)
 }

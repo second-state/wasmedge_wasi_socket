@@ -5,15 +5,8 @@ use std::net::{Shutdown, TcpStream};
 use w13e_wasi_socket::{Shutdown, TcpStream};
 
 fn main() -> std::io::Result<()> {
-    let port = std::env::var("PORT").unwrap_or(0.to_string());
-    let mut stream = TcpStream::connect(format!("127.0.0.1:{}", port))?;
-
+    let mut stream = TcpStream::connect("127.0.0.1:1234")?;
     stream.write(b"hello")?;
-
-    let mut buf = String::new();
-    stream.read_to_string(&mut buf)?;
-    println!("{}", buf);
-
     stream.shutdown(Shutdown::Both)?;
     Ok(())
 }
