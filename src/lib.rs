@@ -1,15 +1,17 @@
 use std::ffi::CString;
 use std::io::{Read, Result, Write};
-pub use std::net::{Shutdown, SocketAddr, ToSocketAddrs};
+pub use std::net::{Shutdown, SocketAddr, ToSocketAddrs, IpAddr, Ipv4Addr};
 
-#[link(wasm_import_module = "ssvm")]
+#[link(wasm_import_module = "wasi_snapshot_preview1")]
 extern "C" {
-    pub fn ssvm_sock_open(addr_family: u8, sock_type: u8) -> u32;
-    pub fn ssvm_sock_close(fd: u32);
-    pub fn ssvm_sock_bind(fd: u32, addr: *const u8, addr_len: u32);
-    pub fn ssvm_sock_connect(fd: u32, addr: *const u8, addr_len: u32);
-    pub fn ssvm_sock_recv(fd: u32, buf: *mut u8, buf_len: u32, flags: u16) -> u32;
-    pub fn ssvm_sock_recv_from(
+    pub fn sock_open(addr_family: u8, sock_type: u8, fd: *mut u32) -> u32;
+    pub fn sock_close(fd: u32);
+    pub fn sock_bind(fd: u32, addr: *const u8, addr_len: u32) -> u32;
+    pub fn sock_listen(fd: u32, backlog: u32) -> u32;
+    pub fn sock_accept(fd: u32, fd: *mut u32) -> u32;
+    pub fn sock_connect(fd: u32, addr: *const u8, addr_len: u32) -> u32;
+    pub fn sock_recv(fd: u32, buf: *const u8, buf_len: usize, flags: u16, recv_len: *mut usize) -> u32;
+    pub fn sock_recv_from(
         fd: u32,
         buf: *mut u8,
         buf_len: u32,
@@ -17,8 +19,8 @@ extern "C" {
         addr_len: *mut u32,
         flags: u16,
     ) -> u32;
-    pub fn ssvm_sock_send(fd: u32, buf: *const u8, buf_len: u32, flags: u16) -> u32;
-    pub fn ssvm_sock_send_to(
+    pub fn sock_send(fd: u32, buf: *const u8, buf_len: u32, flags: u16, send_len: *mut u32) -> u32;
+    pub fn sock_send_to(
         fd: u32,
         buf: *const u8,
         buf_len: u32,
@@ -26,7 +28,7 @@ extern "C" {
         addr_len: u32,
         flags: u16,
     ) -> u32;
-    pub fn ssvm_sock_shutdown(fd: u32, flags: u8);
+    pub fn sock_shutdown(fd: u32, flags: u8) -> u32;
 }
 
 #[derive(Copy, Clone)]
@@ -92,6 +94,7 @@ macro_rules! impl_as_raw_fd {
 
 impl_as_raw_fd! { TcpStream TcpListener UdpSocket }
 
+
 impl TcpStream {
     /// Create TCP socket and connect to the given address.
     ///
@@ -99,50 +102,54 @@ impl TcpStream {
     /// returned.
     pub fn connect<A: ToSocketAddrs>(addrs: A) -> Result<TcpStream> {
         match addrs.to_socket_addrs()?.find_map(|addr| unsafe {
-            let fd = SocketHandle(ssvm_sock_open(
+            let mut fd: u32 = 0;
+            sock_open(
                 AddressFamily::from(addr) as u8,
                 SocketType::Stream as u8,
-            ));
+                &mut fd,
+            );
             let addr_s = CString::new(addr.to_string()).expect("CString::new");
-            ssvm_sock_connect(
-                fd.as_raw_fd(),
+            sock_connect(
+                fd,
                 addr_s.as_ptr() as *const u8,
                 addr_s.as_bytes().len() as u32,
             );
-            Some(fd)
+            Some(SocketHandle(fd))
         }) {
             Some(fd) => Ok(TcpStream { fd }),
             _ => Err(std::io::Error::last_os_error()),
         }
     }
     pub fn shutdown(&self, how: Shutdown) -> Result<()> {
-        unsafe { ssvm_sock_shutdown(self.as_raw_fd(), how as u8) }
+        unsafe {
+            sock_shutdown(self.as_raw_fd(), how as u8);
+        }
         Ok(())
     }
 }
 
 impl Read for TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        let size = unsafe {
-            ssvm_sock_recv(
-                self.as_raw_fd(),
-                buf.as_ptr() as *mut u8,
-                buf.len() as u32,
-                0,
-            )
+        let flags = 0;
+        let mut recv_len: usize = 0;
+
+        let ret = unsafe {
+            sock_recv(self.as_raw_fd(), buf.as_mut_ptr(), buf.len(), flags, &mut recv_len);
         };
-        Ok(size as usize)
+        Ok(recv_len)
     }
 }
 
 impl Write for TcpStream {
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
         let sent = unsafe {
-            ssvm_sock_send(
+            let mut send_len: u32 = 0;
+            sock_send(
                 self.as_raw_fd(),
                 buf.as_ptr() as *const u8,
                 buf.len() as u32,
                 0,
+                &mut send_len,
             )
         };
         Ok(sent as usize)
@@ -152,6 +159,8 @@ impl Write for TcpStream {
     }
 }
 
+
+
 impl TcpListener {
     /// Create TCP socket and bind to the given address.
     ///
@@ -159,13 +168,19 @@ impl TcpListener {
     /// returned.
     pub fn bind<A: ToSocketAddrs>(addrs: A) -> Result<TcpListener> {
         match addrs.to_socket_addrs()?.find_map(|addr| unsafe {
-            let fd = ssvm_sock_open(AddressFamily::from(addr) as u8, SocketType::Stream as u8);
+            let mut fd: u32 = 0;
+            sock_open(
+                AddressFamily::from(addr) as u8,
+                SocketType::Stream as u8,
+                &mut fd,
+            );
             let addr_s = CString::new(addr.to_string()).expect("CString::new");
-            ssvm_sock_bind(
+            sock_bind(
                 fd,
                 addr_s.as_ptr() as *const u8,
                 addr_s.as_bytes().len() as u32,
             );
+            sock_listen(fd, 128);
             Some(SocketHandle(fd))
         }) {
             Some(fd) => Ok(TcpListener { fd }),
@@ -173,7 +188,15 @@ impl TcpListener {
         }
     }
     pub fn accept(&self) -> Result<(TcpStream, SocketAddr)> {
-        todo!();
+        unsafe {
+            let mut fd: u32 = 0;
+            sock_accept(
+                self.as_raw_fd(),
+                &mut fd
+            );
+            let fd = SocketHandle(fd);
+            Ok( (TcpStream{fd}, SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080)) )
+        }
     }
 }
 
@@ -184,9 +207,14 @@ impl UdpSocket {
     /// returned.
     pub fn bind<A: ToSocketAddrs>(addrs: A) -> Result<UdpSocket> {
         match addrs.to_socket_addrs()?.find_map(|addr| unsafe {
-            let fd = ssvm_sock_open(AddressFamily::from(addr) as u8, SocketType::Datagram as u8);
+            let mut fd: u32 = 0;
+            sock_open(
+                AddressFamily::from(addr) as u8,
+                SocketType::Stream as u8,
+                &mut fd,
+            );
             let addr_s = CString::new(addr.to_string()).expect("CString::new");
-            ssvm_sock_bind(
+            sock_bind(
                 fd,
                 addr_s.as_ptr() as *const u8,
                 addr_s.as_bytes().len() as u32,
@@ -201,7 +229,7 @@ impl UdpSocket {
         let mut addr_len: u32 = 0;
         let mut addr_buf = [0; 32];
         let size = unsafe {
-            ssvm_sock_recv_from(
+            sock_recv_from(
                 self.as_raw_fd(),
                 buf.as_ptr() as *mut u8,
                 buf.len() as u32,
@@ -228,7 +256,7 @@ impl UdpSocket {
         ));
         let addr_s = CString::new(addr?.to_string()).expect("CString::new");
         let sent = unsafe {
-            ssvm_sock_send_to(
+            sock_send_to(
                 self.as_raw_fd(),
                 buf.as_ptr() as *const u8,
                 buf.len() as u32,
