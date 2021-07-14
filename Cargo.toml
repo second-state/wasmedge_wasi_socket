@@ -12,3 +12,4 @@ path = "src/lib.rs"
 std = []
 
 [dependencies]
+libc = "0.2.3"

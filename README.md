@@ -9,7 +9,7 @@ Clone [WasmEdge](https://github.com/WasmEdge/WasmEdge) and follow the build step
 This is a example of using wasmedge as a socket client.
 
 ```
-cargo build --example tcp_stream --target wasm32-unknown-unknown
+rustup run nightly cargo build --example tcp_stream --target wasm32-wasi
 ```
 
 Set up a server on your localhost with [ncat](https://nmap.org/ncat).
@@ -41,7 +41,7 @@ hello
 This is a example of using wasmedge as a socket server.
 
 ```
-cargo build --example tcp_listener --target wasm32-unknown-unknown
+rustup run nightly cargo build --example tcp_listener --target wasm32-wasi
 ```
 
 Copy wasm into wasmedge directory and run it. This should setup a tcp listener at `localhost:1234` in wasmedge.
