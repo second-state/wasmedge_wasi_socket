@@ -1,4 +1,5 @@
 use std::io::{Read, Write};
+use std::env;
 
 #[cfg(feature = "std")]
 use std::net::{Shutdown, TcpListener, TcpStream};
@@ -8,8 +9,8 @@ use w13e_wasi_socket::{Shutdown, TcpListener, TcpStream};
 fn handle_client(mut stream: TcpStream) -> std::io::Result<()> {
     let mut buf = String::new();
     stream.read_to_string(&mut buf)?;
-    println!("{}", buf);
-
+    println!("get message: {}", buf);
+    println!("sendback reversed message...");
     stream.write(&buf.chars().rev().collect::<String>().into_bytes())?;
 
     stream.shutdown(Shutdown::Both)?;
@@ -17,6 +18,8 @@ fn handle_client(mut stream: TcpStream) -> std::io::Result<()> {
 }
 
 fn main() -> std::io::Result<()> {
-    let listener = TcpListener::bind("127.0.0.1:1234")?;
+    let port = std::env::var("PORT").unwrap_or(1234.to_string()); 
+    println!("new connection at {}", port);
+    let listener = TcpListener::bind(format!("127.0.0.1:{}", port))?;
     handle_client(listener.accept()?.0)
 }
