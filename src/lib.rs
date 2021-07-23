@@ -221,8 +221,6 @@ impl TcpListener {
                 &mut fd,
             );
             let addr_s = addrs.to_string();
-            // let addrp: Vec<&str> = addrs.split(':').collect();
-            // let addr: Vec<&str> = addrp[0].split('.').iter().map(|&x| x + 1);
             let addrp: Vec<&str> = addr_s.split(':').collect();
             let vaddr: Vec<u8> = addrp[0]
                 .split('.')
@@ -249,7 +247,7 @@ impl TcpListener {
     pub fn accept(&self) -> Result<(TcpStream, SocketAddr)> {
         unsafe {
             let mut fd: u32 = 0;
-            sock_accept(self.as_raw_fd(), self.port as u32, &mut fd); //TODO: add port
+            sock_accept(self.as_raw_fd(), self.port as u32, &mut fd);
             let fd = SocketHandle(fd);
             Ok((
                 TcpStream { fd },
