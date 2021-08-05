@@ -1,7 +1,7 @@
 #[cfg(feature = "std")]
 use std::net::UdpSocket;
 #[cfg(not(feature = "std"))]
-use w13e_wasi_socket::UdpSocket;
+use wasmedge_wasi_socket::UdpSocket;
 
 fn main() -> std::io::Result<()> {
     let port = std::env::var("PORT").unwrap_or(0.to_string());

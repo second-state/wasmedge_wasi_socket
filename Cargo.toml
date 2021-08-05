@@ -1,11 +1,11 @@
 [package]
-name = "w13e_wasi_socket"
+name = "wasmedge_wasi_socket"
 version = "0.1.0"
 authors = [ "Yi <yi@secondstate.io>" ]
 edition = "2018"
 
 [lib]
-name = "w13e_wasi_socket"
+name = "wasmedge_wasi_socket"
 path = "src/lib.rs"
 
 [features]
