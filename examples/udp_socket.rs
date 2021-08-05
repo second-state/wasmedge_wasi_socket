@@ -1,7 +1,7 @@
 #[cfg(feature = "std")]
 use std::net::UdpSocket;
 #[cfg(not(feature = "std"))]
-use w13e_wasi_socket::UdpSocket;
+use wasmedge_wasi_socket::UdpSocket;
 
 fn main() -> std::io::Result<()> {
     let socket = UdpSocket::bind("0.0.0.0:0")?;

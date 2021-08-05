@@ -21,7 +21,7 @@ ncat -kvlp 1234
 Copy wasm into wasmedge directory and run it. Wasmedge would send message "hello" to a server at `localhost:1234`.
 
 ```
-$ cp <path-to-w13e_wasi_socket>/target/wasm32-unknown-unknown/debug/examples/tcp_stream.wasm <path-to-wasmedge>
+$ cp <path-to-wasmedge_wasi_socket>/target/wasm32-unknown-unknown/debug/examples/tcp_stream.wasm <path-to-wasmedge>
 $ ./wasmedge --env PORT=1234 ./tcp_stream.wasm
 connect to 127.0.0.1:1234
 sending hello message...
@@ -49,7 +49,7 @@ rustup run nightly cargo build --example tcp_listener --target wasm32-wasi
 Copy wasm into wasmedge directory and run it. This should setup a tcp listener at `localhost:1234` in wasmedge.
 
 ```
-cp <path-to-w13e_wasi_socket>/target/wasm32-unknown-unknown/debug/examples/tcp_listener.wasm <path-to-wasmedge>
+cp <path-to-wasmedge_wasi_socket>/target/wasm32-unknown-unknown/debug/examples/tcp_listener.wasm <path-to-wasmedge>
 ./wasmedge --env PORT=1234 ./tcp_listener.wasm
 ```
 
