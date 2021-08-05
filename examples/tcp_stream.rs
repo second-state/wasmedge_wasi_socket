@@ -1,4 +1,4 @@
-use std::io::{Read, Write};
+use std::io::Write;
 #[cfg(feature = "std")]
 use std::net::{Shutdown, TcpStream};
 #[cfg(not(feature = "std"))]
