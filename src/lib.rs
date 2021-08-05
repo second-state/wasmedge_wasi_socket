@@ -1,4 +1,3 @@
-use core::mem;
 use libc;
 use std::ffi::CString;
 use std::io::{Read, Result, Write};
@@ -176,7 +175,7 @@ impl Read for TcpStream {
             size: buf.len(),
         };
 
-        let ret = unsafe {
+        unsafe {
             sock_recv(
                 self.as_raw_fd(),
                 &mut vec,
@@ -194,7 +193,7 @@ impl Write for TcpStream {
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
         let sent = unsafe {
             let mut send_len: u32 = 0;
-            let mut vec = IovecWrite {
+            let vec = IovecWrite {
                 buf: buf.as_ptr(),
                 size: buf.len(),
             };
