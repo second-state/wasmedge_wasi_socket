@@ -197,7 +197,8 @@ impl Write for TcpStream {
                 buf: buf.as_ptr(),
                 size: buf.len(),
             };
-            sock_send(self.as_raw_fd(), &vec, 1, 0, &mut send_len)
+            sock_send(self.as_raw_fd(), &vec, 1, 0, &mut send_len);
+            send_len
         };
         Ok(sent as usize)
     }
