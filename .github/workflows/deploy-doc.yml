@@ -1,0 +1,28 @@
+name: Deploy doc to gh-pages
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  deploy-doc:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout 🛎️
+      uses: actions/checkout@v2.3.1
+
+    - name: Setup Cargo 🚚
+      run: |
+        curl https://sh.rustup.rs -sSf | sh -s -- -y
+        export PATH="$HOME/.cargo/bin:$PATH"
+        rustup target add wasm32-wasi
+
+    - name: Build 🔧
+      run: |
+        cargo doc --package wasmedge_wasi_socket
+
+    - name: Deploy 🚀
+      uses: JamesIves/github-pages-deploy-action@4.1.4
+      with:
+        branch: gh-pages
+        folder: target/doc
