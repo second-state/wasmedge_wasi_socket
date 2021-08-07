@@ -1,0 +1,1 @@
+window.ALL_CRATES = ["libc","wasmedge_wasi_socket"];
