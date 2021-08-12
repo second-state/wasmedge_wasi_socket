@@ -13,3 +13,9 @@ std = []
 
 [dependencies]
 libc = "0.2.3"
+
+[workspace]
+members = [
+    "examples/http_client",
+    "examples/http_server"
+]
