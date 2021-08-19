@@ -1,1 +1,1 @@
-window.ALL_CRATES = ["libc","wasmedge_wasi_socket"];
+window.ALL_CRATES = ["wasmedge_wasi_socket"];
