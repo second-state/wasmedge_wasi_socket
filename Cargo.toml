@@ -8,7 +8,7 @@ description = "Rust API for the networking socket functions supported in the Was
 repository = "https://github.com/second-state/wasmedge_wasi_socket"
 readme = "README.md"
 categories = ["network-programming"]
-keywords = ["http", "tcp", "socket", "webassembly", "wasi","wasmedge"]
+keywords = ["http", "tcp", "socket", "webassembly", "wasmedge"]
 
 [lib]
 name = "wasmedge_wasi_socket"
