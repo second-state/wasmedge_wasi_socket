@@ -3,6 +3,12 @@ name = "wasmedge_wasi_socket"
 version = "0.1.0"
 authors = [ "Yi <yi@secondstate.io>" ]
 edition = "2018"
+license = "Apache-2.0"
+description = "Rust API for the networking socket functions supported in the WasmEdge Runtime for WebAssembly."
+repository = "https://github.com/second-state/wasmedge_wasi_socket"
+readme = "README.md"
+categories = ["network-programming","webassembly","wasmedge","wasi"]
+keywords = ["http", "tcp", "socket", "webassembly", "wasi"]
 
 [lib]
 name = "wasmedge_wasi_socket"
