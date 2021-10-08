@@ -1,4 +1,4 @@
-use http_req::request;
+use wasmedge_http_req::request;
 
 fn main() {
     let mut writer = Vec::new(); //container for body of a response
