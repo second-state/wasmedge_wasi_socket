@@ -1,10 +1,20 @@
 # WasmEdge WASI Socket
 
-This is an example of how to run socket program in wasmedge with a wasm compiled from rust.
+Here are some examples for running network socket programs in wasmedge. The applications are written in Rust.
 
-Clone [WasmEdge](https://github.com/WasmEdge/WasmEdge) and follow the build step to build wasmedge.
+## Prerequisites
 
-# TCP Stream Example with WasmEdge
+You need to install [Rust](https://www.rust-lang.org/tools/install) and [WasmEdge](https://github.com/WasmEdge/WasmEdge/blob/master/docs/install.md) before you try to compile and run the following examples.
+
+## An HTTP client example
+
+[See here](http_client/README.md)
+
+## An HTTP server example
+
+[See here](http_server/README.md)
+
+## TCP Stream Example with WasmEdge
 
 This is a example of using wasmedge as a socket client.
 
@@ -28,6 +38,7 @@ sending hello message...
 ```
 
 The server should get the message "hello".
+
 ```
 $ ncat -kvlp 1234 
 Ncat: Version 7.91 ( https://nmap.org/ncat )
@@ -38,7 +49,7 @@ Ncat: Connection from 127.0.0.1:56366.
 hello
 ```
 
-# TCP Listener Example with WasmEdge
+## TCP Listener Example with WasmEdge
 
 This is a example of using wasmedge as a socket server.
 
@@ -67,3 +78,4 @@ hello
 
 olleh
 ```
+

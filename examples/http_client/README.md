@@ -1,17 +1,13 @@
 # WasmEdge WASI Socket Http Client Demo
 
-#install
+## Build
+
 ```shell
-cargo install cargo-wasi
+cargo build --target wasm32-wasi --release
 ```
 
-#build
-```shell
-cargo wasi build --release
-```
+## Run
 
-#run
-wasmedge(0.8.2)
 ```shell
-wasmedge http_client.wasm
+wasmedge target/wasm32-wasi/release/http_client.wasm
 ```
