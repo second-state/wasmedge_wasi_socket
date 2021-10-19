@@ -349,12 +349,12 @@
 
 <span class="attribute">#[<span class="ident">link</span>(<span class="ident">wasm_import_module</span> <span class="op">=</span> <span class="string">&quot;wasi_snapshot_preview1&quot;</span>)]</span>
 <span class="kw">extern</span> <span class="string">&quot;C&quot;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sock_open</span>(<span class="ident">addr_family</span>: <span class="ident">u8</span>, <span class="ident">sock_type</span>: <span class="ident">u8</span>, <span class="ident">fd</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">u32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sock_open</span>(<span class="ident">addr_family</span>: <span class="ident">u8</span>, <span class="ident">sock_type</span>: <span class="ident">u8</span>, <span class="ident">fd</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">u32</span>) -&gt; <span class="ident">u32</span>;
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sock_close</span>(<span class="ident">fd</span>: <span class="ident">u32</span>);
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sock_bind</span>(<span class="ident">fd</span>: <span class="ident">u32</span>, <span class="ident">addr</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">WasiAddress</span>, <span class="ident">port</span>: <span class="ident">u32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span>;
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sock_listen</span>(<span class="ident">fd</span>: <span class="ident">u32</span>, <span class="ident">backlog</span>: <span class="ident">u32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span>;
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sock_accept</span>(<span class="ident">fd</span>: <span class="ident">u32</span>, <span class="ident">port</span>: <span class="ident">u32</span>, <span class="ident">fd</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">u32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span>;
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sock_connect</span>(<span class="ident">fd</span>: <span class="ident">u32</span>, <span class="ident">addr</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">WasiAddress</span>, <span class="ident">port</span>: <span class="ident">u32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sock_bind</span>(<span class="ident">fd</span>: <span class="ident">u32</span>, <span class="ident">addr</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">WasiAddress</span>, <span class="ident">port</span>: <span class="ident">u32</span>) -&gt; <span class="ident">u32</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sock_listen</span>(<span class="ident">fd</span>: <span class="ident">u32</span>, <span class="ident">backlog</span>: <span class="ident">u32</span>) -&gt; <span class="ident">u32</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sock_accept</span>(<span class="ident">fd</span>: <span class="ident">u32</span>, <span class="ident">port</span>: <span class="ident">u32</span>, <span class="ident">fd</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">u32</span>) -&gt; <span class="ident">u32</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sock_connect</span>(<span class="ident">fd</span>: <span class="ident">u32</span>, <span class="ident">addr</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">WasiAddress</span>, <span class="ident">port</span>: <span class="ident">u32</span>) -&gt; <span class="ident">u32</span>;
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sock_recv</span>(
         <span class="ident">fd</span>: <span class="ident">u32</span>,
         <span class="ident">buf</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">IovecRead</span>,
@@ -362,7 +362,7 @@
         <span class="ident">flags</span>: <span class="ident">u16</span>,
         <span class="ident">recv_len</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">usize</span>,
         <span class="ident">oflags</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">usize</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span>;
+    ) -&gt; <span class="ident">u32</span>;
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sock_recv_from</span>(
         <span class="ident">fd</span>: <span class="ident">u32</span>,
         <span class="ident">buf</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">u8</span>,
@@ -370,14 +370,14 @@
         <span class="ident">addr</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">u8</span>,
         <span class="ident">addr_len</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">u32</span>,
         <span class="ident">flags</span>: <span class="ident">u16</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span>;
+    ) -&gt; <span class="ident">u32</span>;
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sock_send</span>(
         <span class="ident">fd</span>: <span class="ident">u32</span>,
         <span class="ident">buf</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">IovecWrite</span>,
         <span class="ident">buf_len</span>: <span class="ident">u32</span>,
         <span class="ident">flags</span>: <span class="ident">u16</span>,
         <span class="ident">send_len</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">u32</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span>;
+    ) -&gt; <span class="ident">u32</span>;
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sock_send_to</span>(
         <span class="ident">fd</span>: <span class="ident">u32</span>,
         <span class="ident">buf</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">u8</span>,
@@ -385,8 +385,8 @@
         <span class="ident">addr</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">u8</span>,
         <span class="ident">addr_len</span>: <span class="ident">u32</span>,
         <span class="ident">flags</span>: <span class="ident">u16</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span>;
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sock_shutdown</span>(<span class="ident">fd</span>: <span class="ident">u32</span>, <span class="ident">flags</span>: <span class="ident">u8</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span>;
+    ) -&gt; <span class="ident">u32</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sock_shutdown</span>(<span class="ident">fd</span>: <span class="ident">u32</span>, <span class="ident">flags</span>: <span class="ident">u8</span>) -&gt; <span class="ident">u32</span>;
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
@@ -397,10 +397,10 @@
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">SocketAddr</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">AddressFamily</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">addr</span>: <span class="ident">SocketAddr</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AddressFamily</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">addr</span>: <span class="ident">SocketAddr</span>) -&gt; <span class="ident">AddressFamily</span> {
         <span class="kw">match</span> <span class="ident">addr</span> {
-            <span class="ident">SocketAddr::V4</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">AddressFamily::Inet4</span>,
-            <span class="ident">SocketAddr::V6</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">AddressFamily::Inet6</span>,
+            <span class="ident">SocketAddr::V4</span>(<span class="kw">_</span>) =&gt; <span class="ident">AddressFamily::Inet4</span>,
+            <span class="ident">SocketAddr::V6</span>(<span class="kw">_</span>) =&gt; <span class="ident">AddressFamily::Inet6</span>,
         }
     }
 }
@@ -413,14 +413,14 @@
 }
 
 <span class="kw">trait</span> <span class="ident">AsRawFd</span> {
-    <span class="kw">fn</span> <span class="ident">as_raw_fd</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span>;
+    <span class="kw">fn</span> <span class="ident">as_raw_fd</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u32</span>;
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">struct</span> <span class="ident">SocketHandle</span>(<span class="ident">u32</span>);
 
 <span class="kw">impl</span> <span class="ident">AsRawFd</span> <span class="kw">for</span> <span class="ident">SocketHandle</span> {
-    <span class="kw">fn</span> <span class="ident">as_raw_fd</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span> {
+    <span class="kw">fn</span> <span class="ident">as_raw_fd</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u32</span> {
         <span class="self">self</span>.<span class="number">0</span>
     }
 }
@@ -443,9 +443,9 @@
 }
 
 <span class="macro">macro_rules!</span> <span class="ident">impl_as_raw_fd</span> {
-    ($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>:<span class="ident">ident</span>)<span class="kw-2">*</span>) <span class="op">=</span><span class="op">&gt;</span> {$(
+    ($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>:<span class="ident">ident</span>)<span class="kw-2">*</span>) =&gt; {$(
         <span class="kw">impl</span> <span class="ident">AsRawFd</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span> {
-            <span class="kw">fn</span> <span class="ident">as_raw_fd</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span> {
+            <span class="kw">fn</span> <span class="ident">as_raw_fd</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u32</span> {
                 <span class="self">self</span>.<span class="ident">fd</span>.<span class="ident">as_raw_fd</span>()
             }
         }
@@ -459,7 +459,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// If multiple address is given, the first successful socket is</span>
     <span class="doccomment">/// returned.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">connect</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">ToSocketAddrs</span><span class="op">&gt;</span>(<span class="ident">addrs</span>: <span class="ident">A</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TcpStream</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">connect</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">ToSocketAddrs</span><span class="op">&gt;</span>(<span class="ident">addrs</span>: <span class="ident">A</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TcpStream</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">addrs</span>.<span class="ident">to_socket_addrs</span>()<span class="question-mark">?</span>.<span class="ident">find_map</span>(<span class="op">|</span><span class="ident">addrs</span><span class="op">|</span> <span class="kw">unsafe</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fd</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0</span>;
             <span class="ident">sock_open</span>(
@@ -483,11 +483,11 @@
 
             <span class="prelude-val">Some</span>(<span class="ident">SocketHandle</span>(<span class="ident">fd</span>))
         }) {
-            <span class="prelude-val">Some</span>(<span class="ident">fd</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">TcpStream</span> { <span class="ident">fd</span> }),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">std::io::Error::last_os_error</span>()),
+            <span class="prelude-val">Some</span>(<span class="ident">fd</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">TcpStream</span> { <span class="ident">fd</span> }),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">std::io::Error::last_os_error</span>()),
         }
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">shutdown</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">how</span>: <span class="ident">Shutdown</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">shutdown</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">how</span>: <span class="ident">Shutdown</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">unsafe</span> {
             <span class="ident">sock_shutdown</span>(<span class="self">self</span>.<span class="ident">as_raw_fd</span>(), <span class="ident">how</span> <span class="kw">as</span> <span class="ident">u8</span>);
         }
@@ -496,7 +496,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Read</span> <span class="kw">for</span> <span class="ident">TcpStream</span> {
-    <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> [<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> [<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">flags</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">recv_len</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">oflags</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
@@ -520,7 +520,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Write</span> <span class="kw">for</span> <span class="ident">TcpStream</span> {
-    <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">sent</span> <span class="op">=</span> <span class="kw">unsafe</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">send_len</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0</span>;
             <span class="kw">let</span> <span class="ident">vec</span> <span class="op">=</span> <span class="ident">IovecWrite</span> {
@@ -532,7 +532,7 @@
         };
         <span class="prelude-val">Ok</span>(<span class="ident">sent</span> <span class="kw">as</span> <span class="ident">usize</span>)
     }
-    <span class="kw">fn</span> <span class="ident">flush</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">flush</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(())
     }
 }
@@ -542,7 +542,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// If multiple address is given, the first successful socket is</span>
     <span class="doccomment">/// returned.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bind</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">ToSocketAddrs</span><span class="op">&gt;</span>(<span class="ident">addrs</span>: <span class="ident">A</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TcpListener</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bind</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">ToSocketAddrs</span><span class="op">&gt;</span>(<span class="ident">addrs</span>: <span class="ident">A</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TcpListener</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">addrs</span>.<span class="ident">to_socket_addrs</span>()<span class="question-mark">?</span>.<span class="ident">find_map</span>(<span class="op">|</span><span class="ident">addrs</span><span class="op">|</span> <span class="kw">unsafe</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fd</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0</span>;
             <span class="ident">sock_open</span>(
@@ -566,15 +566,15 @@
             <span class="ident">sock_listen</span>(<span class="ident">fd</span>, <span class="number">128</span>);
             <span class="prelude-val">Some</span>((<span class="ident">SocketHandle</span>(<span class="ident">fd</span>), <span class="ident">addr</span>, <span class="ident">port</span>))
         }) {
-            <span class="prelude-val">Some</span>((<span class="ident">fd</span>, <span class="ident">addr</span>, <span class="ident">port</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">TcpListener</span> {
+            <span class="prelude-val">Some</span>((<span class="ident">fd</span>, <span class="ident">addr</span>, <span class="ident">port</span>)) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">TcpListener</span> {
                 <span class="ident">fd</span>: <span class="ident">fd</span>,
                 <span class="ident">address</span>: <span class="ident">addr</span>,
                 <span class="ident">port</span>: <span class="ident">port</span>,
             }),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">std::io::Error::last_os_error</span>()),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">std::io::Error::last_os_error</span>()),
         }
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">accept</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">TcpStream</span>, <span class="ident">SocketAddr</span>)<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">accept</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">TcpStream</span>, <span class="ident">SocketAddr</span>)<span class="op">&gt;</span> {
         <span class="kw">unsafe</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fd</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0</span>;
             <span class="ident">sock_accept</span>(<span class="self">self</span>.<span class="ident">as_raw_fd</span>(), <span class="self">self</span>.<span class="ident">port</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fd</span>);
@@ -586,7 +586,7 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">incoming</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Incoming</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">incoming</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Incoming</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
         <span class="ident">Incoming</span> { <span class="ident">listener</span>: <span class="self">self</span> }
     }
 }
@@ -594,11 +594,11 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Iterator</span> <span class="kw">for</span> <span class="ident">Incoming</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TcpStream</span><span class="op">&gt;</span>;
 
-    <span class="kw">fn</span> <span class="ident">next</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TcpStream</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">next</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TcpStream</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">listener</span>.<span class="ident">accept</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="number">0</span>))
     }
 
-    <span class="kw">fn</span> <span class="ident">size_hint</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">usize</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>) {
+    <span class="kw">fn</span> <span class="ident">size_hint</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="ident">usize</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>) {
         (<span class="ident">usize::MAX</span>, <span class="prelude-val">None</span>)
     }
 }
@@ -612,10 +612,10 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// If multiple address is given, the first successful socket is</span>
     <span class="doccomment">/// returned.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bind</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">ToSocketAddrs</span><span class="op">&gt;</span>(<span class="ident">addrs</span>: <span class="ident">A</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UdpSocket</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bind</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">ToSocketAddrs</span><span class="op">&gt;</span>(<span class="ident">addrs</span>: <span class="ident">A</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UdpSocket</span><span class="op">&gt;</span> {
         <span class="macro">todo!</span>();
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">recv_from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> [<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="ident">SocketAddr</span>)<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">recv_from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> [<span class="ident">u8</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="ident">SocketAddr</span>)<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">addr_len</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">addr_buf</span> <span class="op">=</span> [<span class="number">0</span>; <span class="number">32</span>];
         <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="kw">unsafe</span> {
@@ -639,7 +639,7 @@
                 .<span class="ident">expect</span>(<span class="string">&quot;String::parse::&lt;SocketAddr&gt;&quot;</span>),
         ))
     }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">send_to</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">ToSocketAddrs</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">addr</span>: <span class="ident">A</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">send_to</span><span class="op">&lt;</span><span class="ident">A</span>: <span class="ident">ToSocketAddrs</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">addr</span>: <span class="ident">A</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="ident">addr</span>.<span class="ident">to_socket_addrs</span>()<span class="question-mark">?</span>.<span class="ident">next</span>().<span class="ident">ok_or</span>(<span class="ident">std::io::Error::new</span>(
             <span class="ident">std::io::ErrorKind::InvalidInput</span>,
             <span class="string">&quot;No address.&quot;</span>,
