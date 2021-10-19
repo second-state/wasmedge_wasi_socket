@@ -1,7 +1,6 @@
-use bytecodec::io::{IoDecodeExt, ReadBuf};
-use bytecodec::{DecodeExt, Error};
+use bytecodec::DecodeExt;
 use httpcodec::{HttpVersion, ReasonPhrase, Request, RequestDecoder, Response, StatusCode};
-use std::io::{BufReader, Read, Write};
+use std::io::{Read, Write};
 #[cfg(feature = "std")]
 use std::net::{Shutdown, TcpListener, TcpStream};
 #[cfg(not(feature = "std"))]
@@ -60,6 +59,6 @@ fn main() -> std::io::Result<()> {
     println!("new connection at {}", port);
     let listener = TcpListener::bind(format!("127.0.0.1:{}", port))?;
     loop {
-        handle_client(listener.accept()?.0);
+        let _ = handle_client(listener.accept()?.0);
     }
 }
