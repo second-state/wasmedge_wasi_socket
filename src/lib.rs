@@ -23,7 +23,7 @@ extern "C" {
     pub fn sock_close(fd: u32);
     pub fn sock_bind(fd: u32, addr: *mut WasiAddress, port: u32) -> u32;
     pub fn sock_listen(fd: u32, backlog: u32) -> u32;
-    pub fn sock_accept(fd: u32, port: u32, fd: *mut u32) -> u32;
+    pub fn sock_accept(fd: u32, fd: *mut u32) -> u32;
     pub fn sock_connect(fd: u32, addr: *mut WasiAddress, port: u32) -> u32;
     pub fn sock_recv(
         fd: u32,
@@ -247,7 +247,7 @@ impl TcpListener {
     pub fn accept(&self) -> Result<(TcpStream, SocketAddr)> {
         unsafe {
             let mut fd: u32 = 0;
-            sock_accept(self.as_raw_fd(), self.port as u32, &mut fd);
+            sock_accept(self.as_raw_fd(), &mut fd);
             let fd = SocketHandle(fd);
             Ok((
                 TcpStream { fd },
