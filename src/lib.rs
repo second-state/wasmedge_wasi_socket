@@ -1,7 +1,10 @@
 use libc;
+use std::error::Error;
 use std::ffi::CString;
 use std::io::{Read, Result, Write};
 pub use std::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr, ToSocketAddrs};
+use std::ptr::null;
+
 
 #[repr(C)]
 pub struct IovecRead {
@@ -16,6 +19,25 @@ pub struct WasiAddress {
     pub buf: *const libc::c_uchar,
     pub size: usize,
 }
+
+pub struct WasiSockaddr{
+    pub family: AddressFamily,
+    pub sa_data_len: usize,
+    pub sa_data:*mut libc::c_uchar,
+}
+
+impl WasiSockaddr {
+    pub fn default()->WasiSockaddr {
+        let default_buff = String::new().as_mut_ptr();
+        WasiSockaddr{
+            family:AddressFamily::Inet4,
+            sa_data_len:14,
+            sa_data:default_buff
+        }
+    }
+}
+
+
 
 #[link(wasm_import_module = "wasi_snapshot_preview1")]
 extern "C" {
@@ -57,11 +79,21 @@ extern "C" {
         flags: u16,
     ) -> u32;
     pub fn sock_shutdown(fd: u32, flags: u8) -> u32;
+    pub fn get_addrinfo(
+        node: *const u8,
+        node_len:u32,
+        server: *const u8,
+        server_len:u32,
+        hint:*const WasiAddrinfo,
+        res: *mut WasiAddrinfo,
+        max_len: u32,
+        res_len: *mut u8,
+    ) -> u32;
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone,Debug)]
 #[repr(u8)]
-enum AddressFamily {
+pub enum AddressFamily {
     Inet4,
     Inet6,
 }
@@ -75,11 +107,105 @@ impl From<SocketAddr> for AddressFamily {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone,Debug)]
 #[repr(u8)]
-enum SocketType {
+pub enum SocketType {
     Datagram,
     Stream,
+}
+
+#[derive(Copy, Clone,Debug)]
+#[repr(u8)]
+pub enum AiFlags {
+    AI_PASSIVE,
+    AI_CANONNAME,
+    AI_NUMERICHOST,
+    AI_NUMERICSERV,
+    AI_V4MAPPED,
+    AI_ALL,
+    AI_ADDRCONFIG,
+}
+
+#[derive(Copy, Clone,Debug)]
+#[repr(u8)]
+pub enum AiProtocol {
+    IPPROTO_TCP,
+    IPPROTO_UDP,
+}
+#[derive(Debug)]
+pub struct WasiAddrinfo{
+    // pub ai_flags:AiFlags,
+    // pub ai_family:AddressFamily,
+    // pub ai_socktype:SocketType,
+    // pub ai_protocol: AiProtocol,
+    pub ai_flags:usize,
+    pub ai_family:usize,
+    pub ai_socktype:usize,
+    pub ai_protocol: usize,
+    pub ai_addr:*mut WasiSockaddr,
+    pub ai_addrlen: usize,
+    pub ai_canonname:*mut libc::c_uchar,
+    pub ai_canonnamelen:usize,
+    pub ai_next:*mut WasiAddrinfo,
+}
+
+impl WasiAddrinfo {
+
+    pub fn new(mut sa:WasiSockaddr,ai_canonname: *mut libc::c_uchar,ai_canonnamelen:usize,next:*mut WasiAddrinfo) ->WasiAddrinfo {
+        //let mut ai_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+        WasiAddrinfo{
+            ai_flags: 0,
+            ai_family: 0,
+            ai_socktype: 0,
+            ai_protocol: 0,
+            ai_addr: &mut sa,
+            ai_addrlen: std::mem::size_of::<SocketAddr>(),
+            ai_canonname: ai_canonname,
+            ai_canonnamelen: ai_canonnamelen,
+            ai_next:next,
+        }
+
+    }
+    pub fn default()->WasiAddrinfo{
+        let mut ai_addr = WasiSockaddr::default();
+        let mut ai_canonname:String = String::new();
+        let mut ai_canonnamelen = 30;
+        WasiAddrinfo::new(ai_addr, ai_canonname.as_mut_ptr(), ai_canonnamelen,std::ptr::null_mut())
+    }
+    pub fn get_addrinfo(node:&String,service:&String,hints:&WasiAddrinfo) -> Result<Vec<WasiAddrinfo>>{
+
+        let mut res_len:u8 = 10;
+        let max_len = 10;
+        let mut wasiaddrinfo_array :Vec<WasiAddrinfo> = Vec::<WasiAddrinfo>::new();
+        for i in 0..max_len{
+            let mut tmp = WasiAddrinfo::default();
+            wasiaddrinfo_array.push(tmp);
+        }
+        let res = &mut wasiaddrinfo_array[0];
+        println!("node:{}",node);
+        println!("service:{}",service);
+        println!("hint:{:?}",hints);
+        let mut return_code = 0;
+        unsafe{
+            return_code = get_addrinfo(
+            node.as_ptr(),
+            node.len() as u32,
+            service.as_ptr(),
+            service.len() as u32,
+            hints,
+            res,
+            10,
+            &mut res_len
+        );
+        };
+
+        println!("{}",return_code);
+       match return_code {
+           0 => Ok(wasiaddrinfo_array),
+           _ => Err(std::io::Error::last_os_error()),
+       }
+
+    }
 }
 
 trait AsRawFd {
@@ -94,6 +220,7 @@ impl AsRawFd for SocketHandle {
         self.0
     }
 }
+
 
 #[non_exhaustive]
 pub struct TcpStream {

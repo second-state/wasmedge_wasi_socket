@@ -1,8 +1,14 @@
 use wasmedge_http_req::request;
+use wasmedge_wasi_socket::WasiAddrinfo;
 
 fn main() {
     let mut writer = Vec::new(); //container for body of a response
     let res = request::get("http://127.0.0.1:1234/get", &mut writer).unwrap();
+    let node = String::from("google.com");
+    let service = String::from("1234");
+    let hints:WasiAddrinfo  = WasiAddrinfo::default();
+    let addrinfo_res = WasiAddrinfo::get_addrinfo(&node, &service, &hints);
+    println!("{:?}", addrinfo_res.unwrap()[0]);
 
     println!("GET");
     println!("Status: {} {}", res.status_code(), res.reason());

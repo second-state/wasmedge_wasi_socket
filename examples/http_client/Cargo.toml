@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 wasmedge_http_req  = "0.8.1"
+wasmedge_wasi_socket = {path = "../.."}
