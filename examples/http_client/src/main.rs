@@ -7,8 +7,8 @@ fn main() {
     let node = String::from("google.com");
     let service = String::from("1234");
     let hints:WasiAddrinfo  = WasiAddrinfo::default();
-    let addrinfo_res = WasiAddrinfo::get_addrinfo(&node, &service, &hints);
-    println!("{:?}", addrinfo_res.unwrap()[0]);
+    let addrinfo_res = WasiAddrinfo::get_addrinfo(&node, &service, &hints,10);
+
 
     println!("GET");
     println!("Status: {} {}", res.status_code(), res.reason());
