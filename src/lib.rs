@@ -1,4 +1,3 @@
-use libc;
 use std::ffi::CString;
 use std::io::{Read, Result, Write};
 pub use std::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr, ToSocketAddrs};
@@ -8,14 +7,21 @@ pub struct IovecRead {
     pub buf: *mut libc::c_uchar,
     pub size: usize,
 }
+
+#[repr(C)]
 pub struct IovecWrite {
     pub buf: *const libc::c_uchar,
     pub size: usize,
 }
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
 pub struct WasiAddress {
     pub buf: *const libc::c_uchar,
     pub size: usize,
 }
+
+unsafe impl Send for WasiAddress {}
 
 #[link(wasm_import_module = "wasi_snapshot_preview1")]
 extern "C" {
@@ -27,7 +33,7 @@ extern "C" {
     pub fn sock_connect(fd: u32, addr: *mut WasiAddress, port: u32) -> u32;
     pub fn sock_recv(
         fd: u32,
-        buf: *const IovecRead,
+        buf: *mut IovecRead,
         buf_len: usize,
         flags: u16,
         recv_len: *mut usize,
@@ -57,6 +63,12 @@ extern "C" {
         flags: u16,
     ) -> u32;
     pub fn sock_shutdown(fd: u32, flags: u8) -> u32;
+    pub fn sock_getpeeraddr(
+        fd: u32,
+        addr: *mut WasiAddress,
+        addr_type: *mut u32,
+        port: *mut u32,
+    ) -> u32;
 }
 
 #[derive(Copy, Clone)]
@@ -78,7 +90,7 @@ impl From<SocketAddr> for AddressFamily {
 #[derive(Copy, Clone)]
 #[repr(u8)]
 enum SocketType {
-    Datagram,
+    _Datagram,
     Stream,
 }
 
@@ -86,7 +98,7 @@ trait AsRawFd {
     fn as_raw_fd(&self) -> u32;
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct SocketHandle(u32);
 
 impl AsRawFd for SocketHandle {
@@ -96,15 +108,17 @@ impl AsRawFd for SocketHandle {
 }
 
 #[non_exhaustive]
+#[derive(Copy, Clone, Debug)]
 pub struct TcpStream {
     fd: SocketHandle,
 }
 
 #[non_exhaustive]
+#[derive(Copy, Clone, Debug)]
 pub struct TcpListener {
     fd: SocketHandle,
-    address: WasiAddress,
-    port: u16,
+    pub address: WasiAddress,
+    pub port: u16,
 }
 
 #[non_exhaustive]
@@ -157,11 +171,37 @@ impl TcpStream {
             _ => Err(std::io::Error::last_os_error()),
         }
     }
+
     pub fn shutdown(&self, how: Shutdown) -> Result<()> {
         unsafe {
             sock_shutdown(self.as_raw_fd(), how as u8);
         }
         Ok(())
+    }
+
+    pub fn peer_addr(&self) -> Result<SocketAddr> {
+        let buf: Vec<u8> = Vec::with_capacity(4);
+        let mut addr = WasiAddress {
+            buf: buf.as_ptr(),
+            size: 16,
+        };
+        let mut addr_type = 0;
+        let mut port = 0;
+        unsafe {
+            sock_getpeeraddr(self.as_raw_fd(), &mut addr, &mut addr_type, &mut port);
+            let addr = std::slice::from_raw_parts(addr.buf, 4);
+            if addr_type != 4 {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "unsupported address type",
+                ));
+            }
+            let ret = SocketAddr::new(
+                IpAddr::V4(Ipv4Addr::new(addr[0], addr[1], addr[2], addr[3])),
+                port as u16,
+            );
+            Ok(ret)
+        }
     }
 }
 
@@ -237,9 +277,9 @@ impl TcpListener {
             Some((SocketHandle(fd), addr, port))
         }) {
             Some((fd, addr, port)) => Ok(TcpListener {
-                fd: fd,
+                fd,
                 address: addr,
-                port: port,
+                port,
             }),
             _ => Err(std::io::Error::last_os_error()),
         }
@@ -249,10 +289,9 @@ impl TcpListener {
             let mut fd: u32 = 0;
             sock_accept(self.as_raw_fd(), &mut fd);
             let fd = SocketHandle(fd);
-            Ok((
-                TcpStream { fd },
-                SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
-            ))
+            let tcpstream = TcpStream { fd };
+            let peer_addr = tcpstream.peer_addr()?;
+            Ok((tcpstream, peer_addr))
         }
     }
 
@@ -282,7 +321,7 @@ impl UdpSocket {
     ///
     /// If multiple address is given, the first successful socket is
     /// returned.
-    pub fn bind<A: ToSocketAddrs>(addrs: A) -> Result<UdpSocket> {
+    pub fn bind<A: ToSocketAddrs>(_addrs: A) -> Result<UdpSocket> {
         todo!();
     }
     pub fn recv_from(&self, buf: &mut [u8]) -> Result<(usize, SocketAddr)> {
@@ -310,10 +349,10 @@ impl UdpSocket {
         ))
     }
     pub fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: A) -> Result<usize> {
-        let addr = addr.to_socket_addrs()?.next().ok_or(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "No address.",
-        ));
+        let addr = addr
+            .to_socket_addrs()?
+            .next()
+            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "No address."));
         let addr_s = CString::new(addr?.to_string()).expect("CString::new");
         let sent = unsafe {
             sock_send_to(
