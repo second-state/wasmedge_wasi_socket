@@ -209,19 +209,21 @@ impl WasiAddrinfo {
             ));
         }
         println!("before_res:{:?}", wasiaddrinfo_array[0]);
-        unsafe{
-            let a =
-                String:: from_raw_parts(wasiaddrinfo_array[0].ai_canonname,5,6);
-                println!("before_res_canonname:{:?}", a);
-                println!("before_wasi_sockaddr:{:?}",*(wasiaddrinfo_array[0].ai_addr));
-            };
+        unsafe {
+            let a = String::from_raw_parts(wasiaddrinfo_array[0].ai_canonname, 5, 6);
+            println!("before_res_canonname:{:?}", a);
+            println!(
+                "before_wasi_sockaddr:{:?}",
+                *(wasiaddrinfo_array[0].ai_addr)
+            );
+        };
         let mut return_code = 0;
-        let mut res= wasiaddrinfo_array.as_mut_ptr() as u32;
-        println!("res' address:{}",res);
+        let mut res = wasiaddrinfo_array.as_mut_ptr() as u32;
+        println!("res' address:{}", res);
         unsafe {
             return_code = get_addrinfo(
                 node.as_ptr(),
-               // node.len() as u32,
+                // node.len() as u32,
                 0,
                 service.as_ptr(),
                 service.len() as u32,
@@ -233,13 +235,15 @@ impl WasiAddrinfo {
         };
         println! {"res_len:{}", res_len};
         println!("after_res:{:?}", wasiaddrinfo_array[0]);
-        unsafe{
-        //let a =
-        //    String:: from_raw_parts(wasiaddrinfo_array[0].ai_canonname,wasiaddrinfo_array[0].ai_canonnamelen,30);
-        //    println!("after_res_canonname:{:?}", a);
-            println!("before_wasi_sockaddr:{:?}",*(wasiaddrinfo_array[0].ai_addr));
+        unsafe {
+            //let a =
+            //    String:: from_raw_parts(wasiaddrinfo_array[0].ai_canonname,wasiaddrinfo_array[0].ai_canonnamelen,30);
+            //    println!("after_res_canonname:{:?}", a);
+            println!(
+                "before_wasi_sockaddr:{:?}",
+                *(wasiaddrinfo_array[0].ai_addr)
+            );
         };
-
 
         match return_code {
             0 => Ok(wasiaddrinfo_array),
