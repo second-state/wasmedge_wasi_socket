@@ -69,6 +69,12 @@ extern "C" {
         addr_type: *mut u32,
         port: *mut u32,
     ) -> u32;
+    pub fn sock_getlocaladdr(
+        fd: u32,
+        addr: *mut WasiAddress,
+        addr_type: *mut u32,
+        port: *mut u32,
+    ) -> u32;
 }
 
 #[derive(Copy, Clone)]
@@ -189,6 +195,31 @@ impl TcpStream {
         let mut port = 0;
         unsafe {
             sock_getpeeraddr(self.as_raw_fd(), &mut addr, &mut addr_type, &mut port);
+            let addr = std::slice::from_raw_parts(addr.buf, 4);
+            if addr_type != 4 {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "unsupported address type",
+                ));
+            }
+            let ret = SocketAddr::new(
+                IpAddr::V4(Ipv4Addr::new(addr[0], addr[1], addr[2], addr[3])),
+                port as u16,
+            );
+            Ok(ret)
+        }
+    }
+
+    pub fn local_addr(&self) -> Result<SocketAddr> {
+        let buf: Vec<u8> = Vec::with_capacity(4);
+        let mut addr = WasiAddress {
+            buf: buf.as_ptr(),
+            size: 16,
+        };
+        let mut addr_type = 0;
+        let mut port = 0;
+        unsafe {
+            sock_getlocaladdr(self.as_raw_fd(), &mut addr, &mut addr_type, &mut port);
             let addr = std::slice::from_raw_parts(addr.buf, 4);
             if addr_type != 4 {
                 return Err(std::io::Error::new(

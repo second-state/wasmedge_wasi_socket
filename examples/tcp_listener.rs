@@ -7,7 +7,8 @@ use std::net::{Shutdown, TcpListener, TcpStream};
 use wasmedge_wasi_socket::{Shutdown, TcpListener, TcpStream};
 
 fn handle_client((mut stream, addr): (TcpStream, SocketAddr)) -> std::io::Result<()> {
-    println!("get connection from {}", addr.to_string());
+    let local_addr = stream.local_addr()?;
+    println!("{} <-> {}", addr.to_string(), local_addr);
     let mut buf = String::new();
     stream.read_to_string(&mut buf)?;
     println!("get message: {}", buf);
