@@ -1,8 +1,8 @@
 [package]
 name = "wasmedge_wasi_socket"
-version = "0.2.1"
+version = "0.3.0"
 authors = [ "Yi <yi@secondstate.io>" ]
-edition = "2018"
+edition = "2021"
 license = "Apache-2.0"
 description = "Rust API for the networking socket functions supported in the WasmEdge Runtime for WebAssembly."
 repository = "https://github.com/second-state/wasmedge_wasi_socket"
@@ -19,3 +19,4 @@ std = []
 
 [dependencies]
 libc = "0.2.3"
+wasi = "0.11.0"

@@ -17,13 +17,13 @@ jobs:
     - name: build
       run: |
         export PATH="$HOME/.cargo/bin:$PATH"
-        cargo build
         rustup target add wasm32-wasi
-    - name: build examples
+        cargo build
+    - name: build examples on WASI
       run: |
         export PATH="$HOME/.cargo/bin:$PATH"
-        cargo build --target=wasm32-wasi --examples
-    - name: build examples with std
+        cargo build --examples
+    - name: build examples with std on x86_64
       run: |
         export PATH="$HOME/.cargo/bin:$PATH"
-        cargo build --features std --examples
+        cargo build --target=x86_64-unknown-linux-gnu --features std --examples
