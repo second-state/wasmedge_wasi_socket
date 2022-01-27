@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::io::{self, Read, Write};
 use std::str::from_utf8;
 use wasmedge_wasi_socket::poll::{Event, Interest, Poll, Token};
-use wasmedge_wasi_socket::wasi::ERRNO_AGAIN;
 use wasmedge_wasi_socket::{TcpListener, TcpStream};
 
 const DATA: &[u8] = b"Hello world!\n";
@@ -25,7 +24,7 @@ fn main() -> std::io::Result<()> {
                 SERVER => loop {
                     let (connection, address) = match server.accept() {
                         Ok((connection, address)) => (connection, address),
-                        Err(ERRNO_AGAIN) => break,
+                        Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
                         Err(e) => panic!("accept error: {}", e),
                     };
 

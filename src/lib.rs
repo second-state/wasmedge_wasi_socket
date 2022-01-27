@@ -1,10 +1,10 @@
 pub mod poll;
-pub mod wasi;
+mod wasi;
 
 use std::ffi::CString;
 use std::io::{self, Read, Write};
 pub use std::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr, ToSocketAddrs};
-use wasi::{fd_fdstat_get, fd_fdstat_set_flags, Errno, ERRNO_AFNOSUPPORT, FDFLAGS_NONBLOCK};
+use wasi::{fd_fdstat_get, fd_fdstat_set_flags, FDFLAGS_NONBLOCK};
 
 macro_rules! map_errorno {
     ($e:expr) => {{
@@ -12,30 +12,19 @@ macro_rules! map_errorno {
             let ret: u32 = $e;
             match ret {
                 0 => {}
-                _ => return Err(Errno::new(ret as u16)),
+                _ => return Err(std::io::Error::from_raw_os_error(ret as i32)),
             }
         }
     }};
 }
 
-macro_rules! map_ioerror {
+macro_rules! map_ret {
     ($e:expr) => {{
         {
-            let ret: u32 = $e;
+            let ret = $e;
             match ret {
-                0 => {}
-                6 => {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::WouldBlock,
-                        "Resource unavailable, or operation would block.",
-                    ))
-                }
-                _ => {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        Errno::new(ret as u16).message(),
-                    ))
-                }
+                Ok(x) => x,
+                Err(e) => return Err(std::io::Error::from_raw_os_error(e.raw() as i32)),
             }
         }
     }};
@@ -116,10 +105,11 @@ extern "C" {
     ) -> u32;
 }
 
-fn set_nonblocking(fd: u32) -> Result<(), Errno> {
-    let mut fdstate = fd_fdstat_get(fd)?;
+fn set_nonblocking(fd: u32) -> io::Result<()> {
+    let mut fdstate = map_ret!(fd_fdstat_get(fd));
     fdstate.fs_flags |= FDFLAGS_NONBLOCK;
-    fd_fdstat_set_flags(fd, fdstate.fs_flags)
+    let ret = map_ret!(fd_fdstat_set_flags(fd, fdstate.fs_flags));
+    Ok(ret)
 }
 
 #[derive(Copy, Clone)]
@@ -231,7 +221,7 @@ impl TcpStream {
         Ok(())
     }
 
-    pub fn peer_addr(&self) -> Result<SocketAddr, Errno> {
+    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         let buf = [0u8; 16];
         let mut addr = WasiAddress {
             buf: buf.as_ptr(),
@@ -243,7 +233,10 @@ impl TcpStream {
             sock_getpeeraddr(self.as_raw_fd(), &mut addr, &mut addr_type, &mut port);
             let addr = std::slice::from_raw_parts(addr.buf, 4);
             if addr_type != 4 {
-                return Err(ERRNO_AFNOSUPPORT);
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "unsupported address type",
+                ));
             }
             let ret = SocketAddr::new(
                 IpAddr::V4(Ipv4Addr::new(addr[0], addr[1], addr[2], addr[3])),
@@ -290,7 +283,7 @@ impl Read for TcpStream {
         };
 
         unsafe {
-            map_ioerror!(sock_recv(
+            map_errorno!(sock_recv(
                 self.as_raw_fd(),
                 &mut vec,
                 1,
@@ -311,7 +304,7 @@ impl Write for TcpStream {
                 buf: buf.as_ptr(),
                 size: buf.len(),
             };
-            map_ioerror!(sock_send(self.as_raw_fd(), &vec, 1, 0, &mut send_len));
+            map_errorno!(sock_send(self.as_raw_fd(), &vec, 1, 0, &mut send_len));
             send_len
         };
         Ok(sent as usize)
@@ -364,7 +357,7 @@ impl TcpListener {
         }
     }
 
-    pub fn accept(&self) -> Result<(TcpStream, SocketAddr), Errno> {
+    pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
         unsafe {
             let mut fd: u32 = 0;
             map_errorno!(sock_accept(self.as_raw_fd(), &mut fd));
@@ -384,9 +377,9 @@ impl TcpListener {
 }
 
 impl<'a> Iterator for Incoming<'a> {
-    type Item = Result<TcpStream, Errno>;
+    type Item = io::Result<TcpStream>;
 
-    fn next(&mut self) -> Option<Result<TcpStream, Errno>> {
+    fn next(&mut self) -> Option<io::Result<TcpStream>> {
         Some(self.listener.accept().map(|s| s.0))
     }
 
