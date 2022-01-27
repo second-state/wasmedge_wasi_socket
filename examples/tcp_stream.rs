@@ -1,7 +1,4 @@
 use std::io::Write;
-#[cfg(feature = "std")]
-use std::net::{Shutdown, TcpStream};
-#[cfg(not(feature = "std"))]
 use wasmedge_wasi_socket::{Shutdown, TcpStream};
 
 fn main() -> std::io::Result<()> {

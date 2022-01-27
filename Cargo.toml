@@ -19,4 +19,3 @@ std = []
 
 [dependencies]
 libc = "0.2.3"
-wasi = "0.11.0"

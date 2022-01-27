@@ -1,16 +1,16 @@
-use crate::AsRawFd;
-use std::{collections::HashMap, os::wasi::prelude::*};
-use wasi::{
+use crate::wasi::{
     poll_oneoff, Errno, Event as WasiEvent, EventFdReadwrite, Subscription,
     SubscriptionFdReadwrite, SubscriptionU, SubscriptionUU, ERRNO_SUCCESS, EVENTTYPE_CLOCK,
     EVENTTYPE_FD_READ, EVENTTYPE_FD_WRITE,
 };
+use crate::AsRawFd;
+use std::{collections::HashMap, os::wasi::prelude::*};
 
 trait AsPollFd {
     fn push_sub(&self, subs: &mut Vec<Subscription>);
 }
 
-// Associates readiness events with FD
+/// Associates readiness events with FD
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Token(pub usize);
 
@@ -120,15 +120,18 @@ impl Poll {
             };
             subs.len()
         ];
-        let _ = unsafe { poll_oneoff(subs.as_ptr(), oevents.as_mut_ptr(), subs.len()) }?;
+        poll_oneoff(subs.as_ptr(), oevents.as_mut_ptr(), subs.len())?;
         let mut status_map: HashMap<Token, u8> = HashMap::new();
         let mut events = Vec::new();
         for (_, event) in oevents.into_iter().enumerate() {
-            let token = self.tokens.get(&(event.userdata as i32)).unwrap();
-            if let Some(status) = status_map.get_mut(token) {
-                *status |= event.type_.raw();
-            } else {
-                status_map.insert(*token, event.type_.raw());
+            if event.type_ == EVENTTYPE_FD_READ || event.type_ == EVENTTYPE_FD_WRITE {
+                if let Some(token) = self.tokens.get(&(event.userdata as i32)) {
+                    if let Some(status) = status_map.get_mut(token) {
+                        *status |= event.type_.raw();
+                    } else {
+                        status_map.insert(*token, event.type_.raw());
+                    }
+                }
             }
         }
         for (token, status) in status_map.into_iter() {

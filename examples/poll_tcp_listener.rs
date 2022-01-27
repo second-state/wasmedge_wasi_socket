@@ -1,67 +1,57 @@
 // Port from https://github.com/tokio-rs/mio/blob/master/examples/tcp_server.rs
-
-#[cfg(target_os = "wasi")]
 use std::collections::HashMap;
-#[cfg(target_os = "wasi")]
 use std::io::{self, Read, Write};
-#[cfg(target_os = "wasi")]
 use std::str::from_utf8;
-#[cfg(target_os = "wasi")]
 use wasmedge_wasi_socket::poll::{Event, Interest, Poll, Token};
-#[cfg(target_os = "wasi")]
+use wasmedge_wasi_socket::wasi::ERRNO_AGAIN;
 use wasmedge_wasi_socket::{TcpListener, TcpStream};
 
-#[cfg(target_os = "wasi")]
 const DATA: &[u8] = b"Hello world!\n";
 
 fn main() -> std::io::Result<()> {
-    #[cfg(not(target_os = "wasi"))]
-    {
-        println!("This example is only available on WASI");
-        return Ok(());
-    }
+    let mut poll = Poll::new();
+    let server = TcpListener::bind("127.0.0.1:1234", true)?;
+    let mut connections = HashMap::new();
+    const SERVER: Token = Token(0);
+    let mut unique_token = Token(SERVER.0 + 1);
 
-    #[cfg(target_os = "wasi")]
-    {
-        let mut poll = Poll::new();
-        let listener = TcpListener::bind("127.0.0.1:1234")?;
-        let mut connections = HashMap::new();
-        const SERVER: Token = Token(0);
-        let mut unique_token = Token(SERVER.0 + 1);
+    poll.register(&server, SERVER, Interest::Read);
 
-        // Currently accept does not support non-blocking :(
-        let (stream, addr) = listener.accept().unwrap();
-        println!("Accepted connection from: {}", addr);
-        let token = unique_token.add();
-        poll.register(&stream, token, Interest::Both);
-        connections.insert(token, stream);
+    loop {
+        let events = poll.poll().unwrap();
 
-        loop {
-            let events = poll.poll().unwrap();
+        for event in events {
+            match event.token {
+                SERVER => loop {
+                    let (connection, address) = match server.accept() {
+                        Ok((connection, address)) => (connection, address),
+                        Err(ERRNO_AGAIN) => break,
+                        Err(e) => panic!("accept error: {}", e),
+                    };
 
-            for event in events {
-                let done = if let Some(connection) = connections.get_mut(&event.token) {
-                    handle_connection(&mut poll, connection, &event)?
-                } else {
-                    false
-                };
-                if done {
-                    if let Some(connection) = connections.remove(&event.token) {
-                        poll.unregister(&connection);
-                    }
+                    println!("Accepted connection from: {}", address);
 
-                    let (stream, addr) = listener.accept().unwrap();
-                    println!("Accepted connection from: {}", addr);
                     let token = unique_token.add();
-                    poll.register(&stream, token, Interest::Both);
-                    connections.insert(token, stream);
+                    poll.register(&connection, token, Interest::Both);
+                    connections.insert(token, connection);
+                },
+                token => {
+                    let done = if let Some(connection) = connections.get_mut(&token) {
+                        handle_connection(&mut poll, connection, &event)?
+                    } else {
+                        false
+                    };
+                    if done {
+                        if let Some(connection) = connections.remove(&token) {
+                            poll.unregister(&connection);
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-#[cfg(target_os = "wasi")]
 fn handle_connection(
     poll: &mut Poll,
     connection: &mut TcpStream,
@@ -73,7 +63,6 @@ fn handle_connection(
             Ok(_) => {
                 poll.reregister(connection, event.token, Interest::Read);
             }
-            // Seems that socket is not non-blocking, so we will not get would_block error forever :(
             Err(ref err) if would_block(err) => {}
             Err(ref err) if interrupted(err) => return handle_connection(poll, connection, event),
             Err(err) => return Err(err),
@@ -120,12 +109,10 @@ fn handle_connection(
     Ok(false)
 }
 
-#[cfg(target_os = "wasi")]
 fn would_block(err: &io::Error) -> bool {
     err.kind() == io::ErrorKind::WouldBlock
 }
 
-#[cfg(target_os = "wasi")]
 fn interrupted(err: &io::Error) -> bool {
     err.kind() == io::ErrorKind::Interrupted
 }
