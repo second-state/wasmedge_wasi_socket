@@ -374,9 +374,23 @@ impl fmt::Debug for Advice {
     }
 }
 
+/// File descriptor flags
+///
+/// Available flags are:
+/// [FDFLAGS_APPEND], [FDFLAGS_DSYNC], [FDFLAGS_NONBLOCK], [FDFLAGS_RSYNC], [FDFLAGS_SYNC]
 pub type Fdflags = u16;
+/// Append mode: Data written to the file is always appended to the file's end.
+pub const FDFLAGS_APPEND: Fdflags = 1 << 0;
+/// Write according to synchronized I/O data integrity completion. Only the data stored in the file is synchronized.
+pub const FDFLAGS_DSYNC: Fdflags = 1 << 1;
 /// Non-blocking mode.
 pub const FDFLAGS_NONBLOCK: Fdflags = 1 << 2;
+/// Synchronized read I/O operations.
+pub const FDFLAGS_RSYNC: Fdflags = 1 << 3;
+/// Write according to synchronized I/O file integrity completion. In
+/// addition to synchronizing the data stored in the file, the implementation
+/// may also synchronously update the file's metadata.
+pub const FDFLAGS_SYNC: Fdflags = 1 << 4;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]

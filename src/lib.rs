@@ -4,7 +4,10 @@ mod wasi;
 use std::ffi::CString;
 use std::io::{self, Read, Write};
 pub use std::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr, ToSocketAddrs};
-use wasi::{fd_fdstat_get, fd_fdstat_set_flags, FDFLAGS_NONBLOCK};
+use wasi::{fd_fdstat_get, fd_fdstat_set_flags};
+pub use wasi::{
+    Fdflags, FDFLAGS_APPEND, FDFLAGS_DSYNC, FDFLAGS_NONBLOCK, FDFLAGS_RSYNC, FDFLAGS_SYNC,
+};
 
 macro_rules! map_errorno {
     ($e:expr) => {{
@@ -105,9 +108,18 @@ extern "C" {
     ) -> u32;
 }
 
-fn set_nonblocking(fd: u32) -> io::Result<()> {
+/// Set the flags associated with a file descriptor.
+pub fn set_fdflag(fd: u32, fdflag: Fdflags) -> io::Result<()> {
     let mut fdstate = map_ret!(fd_fdstat_get(fd));
-    fdstate.fs_flags |= FDFLAGS_NONBLOCK;
+    fdstate.fs_flags |= fdflag;
+    let ret = map_ret!(fd_fdstat_set_flags(fd, fdstate.fs_flags));
+    Ok(ret)
+}
+
+/// Unset the flags associated with a file descriptor.
+pub fn unset_fdflag(fd: u32, fdflag: Fdflags) -> io::Result<()> {
+    let mut fdstate = map_ret!(fd_fdstat_get(fd));
+    fdstate.fs_flags &= !fdflag;
     let ret = map_ret!(fd_fdstat_set_flags(fd, fdstate.fs_flags));
     Ok(ret)
 }
@@ -160,7 +172,6 @@ pub struct TcpListener {
     fd: SocketHandle,
     pub address: WasiAddress,
     pub port: u16,
-    nonblock: bool,
 }
 
 #[non_exhaustive]
@@ -221,6 +232,7 @@ impl TcpStream {
         Ok(())
     }
 
+    /// Get peer address.
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         let buf = [0u8; 16];
         let mut addr = WasiAddress {
@@ -246,6 +258,7 @@ impl TcpStream {
         }
     }
 
+    /// Get local address.
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         let buf = [0u8; 16];
         let mut addr = WasiAddress {
@@ -340,7 +353,7 @@ impl TcpListener {
             };
 
             if nonblock {
-                set_nonblocking(fd).unwrap();
+                set_fdflag(fd, FDFLAGS_NONBLOCK).unwrap();
             }
 
             sock_bind(fd, &mut addr, port as u32);
@@ -351,20 +364,18 @@ impl TcpListener {
                 fd,
                 address: addr,
                 port,
-                nonblock,
             }),
             _ => Err(std::io::Error::last_os_error()),
         }
     }
 
-    pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
+    /// Accept incoming connections with given file descriptor flags.
+    pub fn accept(&self, fdflag: Fdflags) -> io::Result<(TcpStream, SocketAddr)> {
         unsafe {
             let mut fd: u32 = 0;
             map_errorno!(sock_accept(self.as_raw_fd(), &mut fd));
             let fd = SocketHandle(fd);
-            if self.nonblock {
-                set_nonblocking(fd.as_raw_fd())?;
-            }
+            set_fdflag(fd.as_raw_fd(), fdflag)?;
             let tcpstream = TcpStream { fd };
             let peer_addr = tcpstream.peer_addr()?;
             Ok((tcpstream, peer_addr))
@@ -380,7 +391,7 @@ impl<'a> Iterator for Incoming<'a> {
     type Item = io::Result<TcpStream>;
 
     fn next(&mut self) -> Option<io::Result<TcpStream>> {
-        Some(self.listener.accept().map(|s| s.0))
+        Some(self.listener.accept(0).map(|s| s.0))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
