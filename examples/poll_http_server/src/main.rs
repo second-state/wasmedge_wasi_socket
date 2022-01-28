@@ -17,6 +17,7 @@ impl Handler {
 fn main() -> std::io::Result<()> {
     let mut poll = Poll::new();
     let server = TcpListener::bind("127.0.0.1:1234", true)?;
+    println!("Listening on 127.0.0.1:1234");
     let mut connections = HashMap::new();
     let mut handlers = HashMap::new();
     const SERVER: Token = Token(0);
@@ -91,44 +92,66 @@ fn handle_connection(
                         received_data.resize(received_data.len() + 1024, 0);
                     }
                 }
-                Err(ref err) if would_block(err) => break,
+                Err(ref err) if would_block(err) => {
+                    if bytes_read != 0 {
+                        let received_data = &received_data[..bytes_read];
+                        let mut bs: parsed::stream::ByteStream =
+                            match String::from_utf8(received_data.to_vec()) {
+                                Ok(s) => s,
+                                Err(_) => {
+                                    continue;
+                                }
+                            }
+                            .into();
+                        let req = match parsed::http::parse_http_request(&mut bs) {
+                            Some(req) => req,
+                            None => {
+                                break;
+                            }
+                        };
+                        for header in req.headers.iter() {
+                            if header.name.eq("Conntent-Length") {
+                                let content_length = header.value.parse::<usize>().unwrap();
+                                if content_length > received_data.len() {
+                                    return Ok(true);
+                                }
+                            }
+                        }
+                        println!(
+                            "{:?} request: {:?} {:?}",
+                            connection.peer_addr().unwrap(),
+                            req.method,
+                            req.path
+                        );
+                        let res = Response {
+                            protocol: "HTTP/1.1".to_string(),
+                            code: 200,
+                            message: "OK".to_string(),
+                            headers: vec![
+                                Header {
+                                    name: "Content-Length".to_string(),
+                                    value: req.content.len().to_string(),
+                                },
+                                Header {
+                                    name: "Connection".to_string(),
+                                    value: "close".to_string(),
+                                },
+                            ],
+                            content: req.content,
+                        };
+
+                        handler.response = Some(res.into());
+
+                        poll.reregister(connection, event.token, Interest::Write);
+                        break;
+                    } else {
+                        println!("Empty request");
+                        return Ok(true);
+                    }
+                }
                 Err(ref err) if interrupted(err) => continue,
                 Err(err) => return Err(err),
             }
-        }
-
-        if bytes_read != 0 {
-            let received_data = &received_data[..bytes_read];
-            let mut bs: parsed::stream::ByteStream =
-                String::from_utf8(received_data.to_vec()).unwrap().into();
-            let req = parsed::http::parse_http_request(&mut bs).unwrap();
-            println!(
-                "{:?} request: {:?} {:?}",
-                connection.peer_addr().unwrap(),
-                req.method,
-                req.path
-            );
-
-            let res = Response {
-                protocol: "HTTP/1.1".to_string(),
-                code: 200,
-                message: "OK".to_string(),
-                headers: vec![
-                    Header {
-                        name: "Content-Length".to_string(),
-                        value: req.content.len().to_string(),
-                    },
-                    Header {
-                        name: "Connection".to_string(),
-                        value: "close".to_string(),
-                    },
-                ],
-                content: req.content,
-            };
-
-            handler.response = Some(res.into());
-
-            poll.reregister(connection, event.token, Interest::Write);
         }
 
         if connection_closed {

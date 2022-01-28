@@ -283,6 +283,14 @@ impl TcpStream {
             Ok(ret)
         }
     }
+
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        if nonblocking {
+            set_fdflag(self.as_raw_fd(), FDFLAGS_NONBLOCK)
+        } else {
+            unset_fdflag(self.as_raw_fd(), FDFLAGS_NONBLOCK)
+        }
+    }
 }
 
 impl Read for TcpStream {
