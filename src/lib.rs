@@ -1,7 +1,6 @@
 use std::ffi::CString;
 use std::io::{Read, Result, Write};
 pub use std::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr, ToSocketAddrs};
-use std::ptr::null;
 use std::str;
 
 #[repr(C)]
@@ -36,7 +35,7 @@ pub struct WasiSockaddr {
 impl WasiSockaddr {
     pub fn new(family: AddressFamily, sa_data: &mut Vec<u8>) -> WasiSockaddr {
         WasiSockaddr {
-            family: AddressFamily::Inet4,
+            family,
             sa_data_len: 14,
             sa_data: sa_data.as_mut_ptr(),
         }
@@ -83,7 +82,7 @@ extern "C" {
         flags: u16,
     ) -> u32;
     pub fn sock_shutdown(fd: u32, flags: u8) -> u32;
-    pub fn get_addrinfo(
+    pub fn sock_getaddrinfo(
         node: *const u8,
         node_len: u32,
         server: *const u8,
@@ -127,22 +126,22 @@ pub enum SocketType {
 #[derive(Copy, Clone, Debug)]
 #[repr(u16)]
 pub enum AiFlags {
-    AI_PASSIVE,
-    AI_CANONNAME,
-    AI_NUMERICHOST,
-    AI_NUMERICSERV,
-    AI_V4MAPPED,
-    AI_ALL,
-    AI_ADDRCONFIG,
+    AiPassive,
+    AiCanonname,
+    AiNumericHost,
+    AiNumericServ,
+    AiV4Mapped,
+    AiAll,
+    AiAddrConfig,
 }
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
 pub enum AiProtocol {
-    IPPROTO_TCP,
-    IPPROTO_UDP,
+    IPProtoTCP,
+    IPProtoUDP,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub struct WasiAddrinfo {
     pub ai_flags: AiFlags,
@@ -159,10 +158,10 @@ pub struct WasiAddrinfo {
 impl WasiAddrinfo {
     pub fn default() -> WasiAddrinfo {
         WasiAddrinfo {
-            ai_flags: AiFlags::AI_PASSIVE,
+            ai_flags: AiFlags::AiPassive,
             ai_family: AddressFamily::Inet4,
             ai_socktype: SocketType::Datagram,
-            ai_protocol: AiProtocol::IPPROTO_TCP,
+            ai_protocol: AiProtocol::IPProtoTCP,
             ai_addr: std::ptr::null_mut(),
             ai_addrlen: 0,
             ai_canonname: std::ptr::null_mut(),
@@ -170,97 +169,53 @@ impl WasiAddrinfo {
             ai_next: std::ptr::null_mut(),
         }
     }
-    pub fn new(
-        ai_flags: AiFlags,
-        ai_family: AddressFamily,
-        ai_socktype: SocketType,
-        ai_protocol: AiProtocol,
-        ai_addr: &mut WasiSockaddr,
-        ai_addrlen: u32,
-        ai_canonname: *mut u8,
-        ai_canonnamelen: u32,
-        ai_next: *mut WasiAddrinfo,
-    ) -> WasiAddrinfo {
-        WasiAddrinfo {
-            ai_flags: ai_flags,
-            ai_family: ai_family,
-            ai_socktype: ai_socktype,
-            ai_protocol: ai_protocol,
-            ai_addr: ai_addr,
-            ai_addrlen: ai_addrlen,
-            ai_canonname: ai_canonname,
-            ai_canonnamelen: ai_canonnamelen,
-            ai_next: ai_next,
-        }
-    }
+
+    /// Get Address Information
+    ///
+    /// As calling FFI, use buffer as parameter in order to avoid memory leak.
     pub fn get_addrinfo(
-        node: &String,
-        service: &String,
+        node: &str,
+        service: &str,
         hints: &WasiAddrinfo,
         max_reslen: usize,
+        sockaddr: &mut Vec<WasiSockaddr>,
+        sockbuff: &mut Vec<Vec<u8>>,
+        ai_canonname: &mut Vec<String>,
     ) -> Result<Vec<WasiAddrinfo>> {
         let mut res_len: u32 = 0;
-        let mut sockaddr_array = Vec::<WasiSockaddr>::new();
-        let mut sockbuff = Vec::<Vec<u8>>::new();
         let mut wasiaddrinfo_array: Vec<WasiAddrinfo> = Vec::<WasiAddrinfo>::new();
-        let mut ai_canonname_array: Vec<String> = Vec::<String>::new();
         for i in 0..max_reslen {
-            sockbuff.push(vec![0; 14]);
-            sockaddr_array.push(WasiSockaddr::new(AddressFamily::Inet4, &mut sockbuff[i]));
-            ai_canonname_array.push(String::with_capacity(30));
-            wasiaddrinfo_array.push(WasiAddrinfo::new(
-                AiFlags::AI_PASSIVE,
-                AddressFamily::Inet6,
-                SocketType::Datagram,
-                AiProtocol::IPPROTO_TCP,
-                &mut sockaddr_array[i],
-                0,
-                ai_canonname_array[i].as_mut_ptr(),
-                30,
-                std::ptr::null_mut(),
-            ));
+            sockbuff.push(vec![0u8; 14]);
+            sockaddr.push(WasiSockaddr::new(AddressFamily::Inet4, &mut sockbuff[i]));
+            ai_canonname.push(String::with_capacity(30));
+            wasiaddrinfo_array.push(WasiAddrinfo {
+                ai_flags: AiFlags::AiPassive,
+                ai_family: AddressFamily::Inet6,
+                ai_socktype: SocketType::Datagram,
+                ai_protocol: AiProtocol::IPProtoTCP,
+                ai_addr: &mut sockaddr[i],
+                ai_addrlen: 0,
+                ai_canonname: ai_canonname[i].as_mut_ptr(),
+                ai_canonnamelen: 30,
+                ai_next: std::ptr::null_mut(),
+            });
         }
-        println!("before_res:{:?}", wasiaddrinfo_array[0]);
-        unsafe {
-            println!(
-                "before_wasi_sockaddr:{:?}",
-                *(wasiaddrinfo_array[0].ai_addr)
-            );
-            let tmp = ((*(wasiaddrinfo_array[0].ai_addr)).sa_data);
-            println!("sockbuf:{:?}", Vec::from_raw_parts(tmp, 14, 15));
-        };
-        let mut return_code = 0;
         let mut res = wasiaddrinfo_array.as_mut_ptr() as u32;
-        println!("res' address:{}", res);
         unsafe {
-            return_code = get_addrinfo(
+            let return_code = sock_getaddrinfo(
                 node.as_ptr(),
                 node.len() as u32,
                 service.as_ptr(),
                 service.len() as u32,
                 hints as *const WasiAddrinfo,
                 &mut res,
-                10,
+                max_reslen as u32,
                 &mut res_len,
             );
-        };
-        println!("==========================================================");
-        println!("res code:{}", return_code);
-        println! {"res_len:{}", res_len};
-        println!("==========================================================");
-        println!("after_res:{:?}", wasiaddrinfo_array[0]);
-        unsafe {
-            // let a =
-            //     String:: from_raw_parts(wasiaddrinfo_array[0].ai_canonname,10,30);
-            //     println!("after_res_canonname:{:?}", a);
-            println!("after_wasi_sockaddr:{:?}", *(wasiaddrinfo_array[0].ai_addr));
-            let tmp = ((*(wasiaddrinfo_array[0].ai_addr)).sa_data);
-            println!("sockbuf:{:?}", Vec::from_raw_parts(tmp, 14, 15));
-        };
-
-        match return_code {
-            0 => Ok(wasiaddrinfo_array),
-            _ => Err(std::io::Error::last_os_error()),
+            match return_code {
+                0 => Ok(wasiaddrinfo_array[..res_len as usize].to_vec()),
+                _ => Err(std::io::Error::last_os_error()),
+            }
         }
     }
 }
