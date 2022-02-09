@@ -116,6 +116,16 @@ impl From<SocketAddr> for AddressFamily {
     }
 }
 
+impl AddressFamily {
+    pub fn is_v4(&self) -> bool {
+        matches!(*self, AddressFamily::Inet4)
+    }
+
+    pub fn is_v6(&self) -> bool {
+        matches!(*self, AddressFamily::Inet6)
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 #[repr(u8)]
 pub enum SocketType {
@@ -141,6 +151,7 @@ pub enum AiProtocol {
     IPProtoTCP,
     IPProtoUDP,
 }
+
 #[derive(Debug, Clone)]
 #[repr(C)]
 pub struct WasiAddrinfo {
@@ -182,6 +193,8 @@ impl WasiAddrinfo {
         sockbuff: &mut Vec<Vec<u8>>,
         ai_canonname: &mut Vec<String>,
     ) -> Result<Vec<WasiAddrinfo>> {
+        let node = node.to_string();
+        let service = service.to_string();
         let mut res_len: u32 = 0;
         let mut wasiaddrinfo_array: Vec<WasiAddrinfo> = Vec::<WasiAddrinfo>::new();
         for i in 0..max_reslen {
