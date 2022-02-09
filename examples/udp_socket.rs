@@ -1,6 +1,3 @@
-#[cfg(feature = "std")]
-use std::net::UdpSocket;
-#[cfg(not(feature = "std"))]
 use wasmedge_wasi_socket::UdpSocket;
 
 fn main() -> std::io::Result<()> {

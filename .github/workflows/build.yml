@@ -11,19 +11,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: setup cargo
+    - name: setup Rust toolchain
       run: |
         curl https://sh.rustup.rs -sSf | sh -s -- -y
+        export PATH="$HOME/.cargo/bin:$PATH"
+        rustup target add wasm32-wasi
     - name: build
       run: |
         export PATH="$HOME/.cargo/bin:$PATH"
         cargo build
-        rustup target add wasm32-wasi
-    - name: build examples
+    - name: build examples on WASI
       run: |
         export PATH="$HOME/.cargo/bin:$PATH"
-        cargo build --target=wasm32-wasi --examples
-    - name: build examples with std
-      run: |
-        export PATH="$HOME/.cargo/bin:$PATH"
-        cargo build --features std --examples
+        cargo build --examples

@@ -1,0 +1,11 @@
+[package]
+name = "nonblock_http_client"
+version = "0.1.0"
+edition = "2021"
+authors = ["LI Rui <me@lirui.tech>"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+wasmedge_wasi_socket = { path = "../../" }
+httparse = "1.5"

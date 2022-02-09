@@ -1,7 +1,38 @@
+pub mod poll;
+mod wasi;
+
 use std::ffi::CString;
-use std::io::{Read, Result, Write};
+use std::io::{self, Read, Write};
 pub use std::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr, ToSocketAddrs};
 use std::str;
+use wasi::{fd_fdstat_get, fd_fdstat_set_flags};
+pub use wasi::{
+    Fdflags, FDFLAGS_APPEND, FDFLAGS_DSYNC, FDFLAGS_NONBLOCK, FDFLAGS_RSYNC, FDFLAGS_SYNC,
+};
+
+macro_rules! map_errorno {
+    ($e:expr) => {{
+        {
+            let ret: u32 = $e;
+            match ret {
+                0 => {}
+                _ => return Err(std::io::Error::from_raw_os_error(ret as i32)),
+            }
+        }
+    }};
+}
+
+macro_rules! map_ret {
+    ($e:expr) => {{
+        {
+            let ret = $e;
+            match ret {
+                Ok(x) => x,
+                Err(e) => return Err(std::io::Error::from_raw_os_error(e.raw() as i32)),
+            }
+        }
+    }};
+}
 
 #[repr(C)]
 pub struct IovecRead {
@@ -98,6 +129,28 @@ extern "C" {
         addr_type: *mut u32,
         port: *mut u32,
     ) -> u32;
+    pub fn sock_getlocaladdr(
+        fd: u32,
+        addr: *mut WasiAddress,
+        addr_type: *mut u32,
+        port: *mut u32,
+    ) -> u32;
+}
+
+/// Set the flags associated with a file descriptor.
+pub fn set_fdflag(fd: u32, fdflag: Fdflags) -> io::Result<()> {
+    let mut fdstate = map_ret!(fd_fdstat_get(fd));
+    fdstate.fs_flags |= fdflag;
+    let ret = map_ret!(fd_fdstat_set_flags(fd, fdstate.fs_flags));
+    Ok(ret)
+}
+
+/// Unset the flags associated with a file descriptor.
+pub fn unset_fdflag(fd: u32, fdflag: Fdflags) -> io::Result<()> {
+    let mut fdstate = map_ret!(fd_fdstat_get(fd));
+    fdstate.fs_flags &= !fdflag;
+    let ret = map_ret!(fd_fdstat_set_flags(fd, fdstate.fs_flags));
+    Ok(ret)
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -192,7 +245,7 @@ impl WasiAddrinfo {
         sockaddr: &mut Vec<WasiSockaddr>,
         sockbuff: &mut Vec<Vec<u8>>,
         ai_canonname: &mut Vec<String>,
-    ) -> Result<Vec<WasiAddrinfo>> {
+    ) -> io::Result<Vec<WasiAddrinfo>> {
         let node = node.to_string();
         let service = service.to_string();
         let mut res_len: u32 = 0;
@@ -233,7 +286,7 @@ impl WasiAddrinfo {
     }
 }
 
-trait AsRawFd {
+pub trait AsRawFd {
     fn as_raw_fd(&self) -> u32;
 }
 
@@ -283,7 +336,7 @@ impl TcpStream {
     ///
     /// If multiple address is given, the first successful socket is
     /// returned.
-    pub fn connect<A: ToSocketAddrs>(addrs: A) -> Result<TcpStream> {
+    pub fn connect<A: ToSocketAddrs>(addrs: A) -> io::Result<TcpStream> {
         match addrs.to_socket_addrs()?.find_map(|addrs| unsafe {
             let mut fd: u32 = 0;
             sock_open(
@@ -312,15 +365,16 @@ impl TcpStream {
         }
     }
 
-    pub fn shutdown(&self, how: Shutdown) -> Result<()> {
+    pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
         unsafe {
             sock_shutdown(self.as_raw_fd(), how as u8);
         }
         Ok(())
     }
 
-    pub fn peer_addr(&self) -> Result<SocketAddr> {
-        let buf: Vec<u8> = Vec::with_capacity(4);
+    /// Get peer address.
+    pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        let buf = [0u8; 16];
         let mut addr = WasiAddress {
             buf: buf.as_ptr(),
             size: 16,
@@ -343,10 +397,44 @@ impl TcpStream {
             Ok(ret)
         }
     }
+
+    /// Get local address.
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        let buf = [0u8; 16];
+        let mut addr = WasiAddress {
+            buf: buf.as_ptr(),
+            size: 16,
+        };
+        let mut addr_type = 0;
+        let mut port = 0;
+        unsafe {
+            sock_getlocaladdr(self.as_raw_fd(), &mut addr, &mut addr_type, &mut port);
+            let addr = std::slice::from_raw_parts(addr.buf, 4);
+            if addr_type != 4 {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "unsupported address type",
+                ));
+            }
+            let ret = SocketAddr::new(
+                IpAddr::V4(Ipv4Addr::new(addr[0], addr[1], addr[2], addr[3])),
+                port as u16,
+            );
+            Ok(ret)
+        }
+    }
+
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        if nonblocking {
+            set_fdflag(self.as_raw_fd(), FDFLAGS_NONBLOCK)
+        } else {
+            unset_fdflag(self.as_raw_fd(), FDFLAGS_NONBLOCK)
+        }
+    }
 }
 
 impl Read for TcpStream {
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let flags = 0;
         let mut recv_len: usize = 0;
         let mut oflags: usize = 0;
@@ -356,33 +444,33 @@ impl Read for TcpStream {
         };
 
         unsafe {
-            sock_recv(
+            map_errorno!(sock_recv(
                 self.as_raw_fd(),
                 &mut vec,
                 1,
                 flags,
                 &mut recv_len,
                 &mut oflags,
-            );
+            ));
         };
         Ok(recv_len)
     }
 }
 
 impl Write for TcpStream {
-    fn write(&mut self, buf: &[u8]) -> Result<usize> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let sent = unsafe {
             let mut send_len: u32 = 0;
             let vec = IovecWrite {
                 buf: buf.as_ptr(),
                 size: buf.len(),
             };
-            sock_send(self.as_raw_fd(), &vec, 1, 0, &mut send_len);
+            map_errorno!(sock_send(self.as_raw_fd(), &vec, 1, 0, &mut send_len));
             send_len
         };
         Ok(sent as usize)
     }
-    fn flush(&mut self) -> Result<()> {
+    fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
 }
@@ -392,7 +480,7 @@ impl TcpListener {
     ///
     /// If multiple address is given, the first successful socket is
     /// returned.
-    pub fn bind<A: ToSocketAddrs>(addrs: A) -> Result<TcpListener> {
+    pub fn bind<A: ToSocketAddrs>(addrs: A, nonblock: bool) -> io::Result<TcpListener> {
         match addrs.to_socket_addrs()?.find_map(|addrs| unsafe {
             let mut fd: u32 = 0;
             sock_open(
@@ -412,6 +500,10 @@ impl TcpListener {
                 size: 4,
             };
 
+            if nonblock {
+                set_fdflag(fd, FDFLAGS_NONBLOCK).unwrap();
+            }
+
             sock_bind(fd, &mut addr, port as u32);
             sock_listen(fd, 128);
             Some((SocketHandle(fd), addr, port))
@@ -424,11 +516,14 @@ impl TcpListener {
             _ => Err(std::io::Error::last_os_error()),
         }
     }
-    pub fn accept(&self) -> Result<(TcpStream, SocketAddr)> {
+
+    /// Accept incoming connections with given file descriptor flags.
+    pub fn accept(&self, fdflag: Fdflags) -> io::Result<(TcpStream, SocketAddr)> {
         unsafe {
             let mut fd: u32 = 0;
-            sock_accept(self.as_raw_fd(), &mut fd);
+            map_errorno!(sock_accept(self.as_raw_fd(), &mut fd));
             let fd = SocketHandle(fd);
+            set_fdflag(fd.as_raw_fd(), fdflag)?;
             let tcpstream = TcpStream { fd };
             let peer_addr = tcpstream.peer_addr()?;
             Ok((tcpstream, peer_addr))
@@ -441,10 +536,10 @@ impl TcpListener {
 }
 
 impl<'a> Iterator for Incoming<'a> {
-    type Item = Result<TcpStream>;
+    type Item = io::Result<TcpStream>;
 
-    fn next(&mut self) -> Option<Result<TcpStream>> {
-        Some(self.listener.accept().map(|s| s.0))
+    fn next(&mut self) -> Option<io::Result<TcpStream>> {
+        Some(self.listener.accept(0).map(|s| s.0))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -461,10 +556,10 @@ impl UdpSocket {
     ///
     /// If multiple address is given, the first successful socket is
     /// returned.
-    pub fn bind<A: ToSocketAddrs>(_addrs: A) -> Result<UdpSocket> {
+    pub fn bind<A: ToSocketAddrs>(_addrs: A) -> io::Result<UdpSocket> {
         todo!();
     }
-    pub fn recv_from(&self, buf: &mut [u8]) -> Result<(usize, SocketAddr)> {
+    pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         let mut addr_len: u32 = 0;
         let mut addr_buf = [0; 32];
         let size = unsafe {
@@ -488,7 +583,7 @@ impl UdpSocket {
                 .expect("String::parse::<SocketAddr>"),
         ))
     }
-    pub fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: A) -> Result<usize> {
+    pub fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: A) -> io::Result<usize> {
         let addr = addr
             .to_socket_addrs()?
             .next()
