@@ -16,13 +16,14 @@ jobs:
         curl https://sh.rustup.rs -sSf | sh -s -- -y
         export PATH="$HOME/.cargo/bin:$PATH"
         rustup toolchain install nightly
+        rustup target add wasm32-wasi
 
     - name: Build 🔧
       run: |
-        RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly rustdoc -p wasmedge_wasi_socket --lib
+        RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly rustdoc -p wasmedge_wasi_socket --target wasm32-wasi --lib
 
     - name: Deploy 🚀
       uses: JamesIves/github-pages-deploy-action@4.1.4
       with:
         branch: gh-pages
-        folder: target/doc
+        folder: target/wasm32-wasi/doc
