@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Interest","Interest used in registering"]],"struct":[["Event","Token and corresponding event status"],["Poll","Poll Instance"],["PollFd","Pollable file descriptor"],["Selector","Structs for containting poll fds"],["Token","Associates readiness events with FD"]]});
