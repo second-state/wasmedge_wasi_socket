@@ -1,9 +1,6 @@
 use bytecodec::DecodeExt;
 use httpcodec::{HttpVersion, ReasonPhrase, Request, RequestDecoder, Response, StatusCode};
 use std::io::{Read, Write};
-#[cfg(feature = "std")]
-use std::net::{Shutdown, TcpListener, TcpStream};
-#[cfg(not(feature = "std"))]
 use wasmedge_wasi_socket::{Shutdown, TcpListener, TcpStream};
 
 fn handle_http(req: Request<String>) -> bytecodec::Result<Response<String>> {

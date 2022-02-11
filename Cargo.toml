@@ -1,6 +1,6 @@
 [package]
 name = "wasmedge_wasi_socket"
-version = "0.3.0"
+version = "0.3.1"
 authors = [ "Yi <yi@secondstate.io>" ]
 edition = "2021"
 license = "Apache-2.0"
@@ -13,9 +13,6 @@ keywords = ["http", "tcp", "socket", "webassembly", "wasmedge"]
 [lib]
 name = "wasmedge_wasi_socket"
 path = "src/lib.rs"
-
-[features]
-std = []
 
 [dependencies]
 libc = "0.2.3"

@@ -7,7 +7,7 @@ use crate::AsRawFd;
 use std::{collections::HashMap, os::wasi::prelude::*};
 
 trait AsPollFd {
-    fn push_sub(&self, subs: &mut Vec<Subscription>);
+    fn push_sub(&self) -> Vec<Subscription>;
 }
 
 /// Associates readiness events with FD
@@ -106,7 +106,7 @@ impl Poll {
         }
         let mut subs = Vec::with_capacity(self.selector.poll_fds.len());
         for fd in self.selector.poll_fds.values() {
-            fd.push_sub(&mut subs);
+            subs.append(&mut fd.push_sub());
         }
         let mut oevents = vec![
             WasiEvent {
@@ -201,7 +201,8 @@ pub struct PollFd {
 }
 
 impl AsPollFd for PollFd {
-    fn push_sub(&self, subs: &mut Vec<Subscription>) {
+    fn push_sub(&self) -> Vec<Subscription> {
+        let mut subs = Vec::new();
         match self.interest {
             Interest::Read => {
                 subs.push(Subscription {
@@ -254,5 +255,6 @@ impl AsPollFd for PollFd {
                 });
             }
         }
+        subs
     }
 }
