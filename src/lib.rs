@@ -64,7 +64,7 @@ pub struct WasiSockaddr {
 }
 
 impl WasiSockaddr {
-    pub fn new(family: AddressFamily, sa_data: &mut Vec<u8>) -> WasiSockaddr {
+    pub fn new(family: AddressFamily, sa_data: &mut [u8]) -> WasiSockaddr {
         WasiSockaddr {
             family,
             sa_data_len: 14,

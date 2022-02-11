@@ -8,6 +8,7 @@ use core::mem::MaybeUninit;
 pub type Size = usize;
 pub type Filesize = u64;
 pub type Timestamp = u64;
+
 #[repr(transparent)]
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Clockid(u32);
@@ -242,11 +243,6 @@ impl fmt::Display for Errno {
         write!(f, "{} (error {})", self.name(), self.0)
     }
 }
-
-#[cfg(feature = "std")]
-extern crate std;
-#[cfg(feature = "std")]
-impl std::error::Error for Errno {}
 
 pub type Rights = u64;
 

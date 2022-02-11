@@ -1,6 +1,6 @@
 # WasmEdge WASI Socket
 
-Here are some examples for running network socket programs in wasmedge. The applications are written in Rust.
+Here are some examples for running network socket programs in WasmEdge. The applications are written in Rust.
 
 ## Prerequisites
 
@@ -10,16 +10,24 @@ You need to install [Rust](https://www.rust-lang.org/tools/install) and [WasmEdg
 
 [See here](http_client/README.md)
 
+## An non-blocking HTTP client example
+
+[See here](nonblock_http_client)
+
 ## An HTTP server example
 
 [See here](http_server/README.md)
 
+## An HTTP server example with poll
+
+[See here](poll_http_server)
+
 ## TCP Stream Example with WasmEdge
 
-This is a example of using wasmedge as a socket client.
+This is a example of using WasmEdge as a socket client.
 
 ```
-rustup run nightly cargo build --example tcp_stream --target wasm32-wasi
+cargo run --example tcp_stream
 ```
 
 Set up a server on your localhost with [ncat](https://nmap.org/ncat).
@@ -28,7 +36,7 @@ Set up a server on your localhost with [ncat](https://nmap.org/ncat).
 ncat -kvlp 1234
 ```
 
-Copy wasm into wasmedge directory and run it. Wasmedge would send message "hello" to a server at `localhost:1234`.
+Copy wasm into WasmEdge directory and run it. WasmEdge would send message "hello" to a server at `localhost:1234`.
 
 ```
 $ cp <path-to-wasmedge_wasi_socket>/target/wasm32-unknown-unknown/debug/examples/tcp_stream.wasm <path-to-wasmedge>
@@ -54,14 +62,7 @@ hello
 This is a example of using wasmedge as a socket server.
 
 ```
-rustup run nightly cargo build --example tcp_listener --target wasm32-wasi
-```
-
-Copy wasm into wasmedge directory and run it. This should setup a tcp listener at `localhost:1234` in wasmedge.
-
-```
-cp <path-to-wasmedge_wasi_socket>/target/wasm32-unknown-unknown/debug/examples/tcp_listener.wasm <path-to-wasmedge>
-./wasmedge --env PORT=1234 ./tcp_listener.wasm
+cargo run --example tcp_listener
 ```
 
 Set up a client on your localhost with [ncat](https://nmap.org/ncat).
