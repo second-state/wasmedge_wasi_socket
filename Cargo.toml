@@ -1,6 +1,6 @@
 [package]
 name = "wasmedge_wasi_socket"
-version = "0.3.1"
+version = "0.3.2"
 authors = [ "Yi <yi@secondstate.io>" ]
 edition = "2021"
 license = "Apache-2.0"
