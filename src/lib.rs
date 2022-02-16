@@ -55,12 +55,12 @@ pub struct WasiAddress {
 
 unsafe impl Send for WasiAddress {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub struct WasiSockaddr {
     pub family: AddressFamily,
     pub sa_data_len: u32,
-    pub sa_data: *mut libc::c_uchar,
+    pub sa_data: *mut u8,
 }
 
 impl WasiSockaddr {
@@ -69,6 +69,16 @@ impl WasiSockaddr {
             family,
             sa_data_len: 14,
             sa_data: sa_data.as_mut_ptr(),
+        }
+    }
+}
+
+impl Default for WasiSockaddr {
+    fn default() -> WasiSockaddr {
+        WasiSockaddr {
+            family: AddressFamily::Inet4,
+            sa_data_len: 14,
+            sa_data: std::ptr::null_mut(),
         }
     }
 }
@@ -154,7 +164,7 @@ pub fn unset_fdflag(fd: u32, fdflag: Fdflags) -> io::Result<()> {
 }
 
 #[derive(Copy, Clone, Debug)]
-#[repr(u8)]
+#[repr(u8, align(1))]
 pub enum AddressFamily {
     Inet4,
     Inet6,
@@ -180,14 +190,14 @@ impl AddressFamily {
 }
 
 #[derive(Copy, Clone, Debug)]
-#[repr(u8)]
+#[repr(u8, align(1))]
 pub enum SocketType {
     Datagram,
     Stream,
 }
 
 #[derive(Copy, Clone, Debug)]
-#[repr(u16)]
+#[repr(u16, align(2))]
 pub enum AiFlags {
     AiPassive,
     AiCanonname,
@@ -199,14 +209,14 @@ pub enum AiFlags {
 }
 
 #[derive(Copy, Clone, Debug)]
-#[repr(u8)]
+#[repr(u8, align(1))]
 pub enum AiProtocol {
     IPProtoTCP,
     IPProtoUDP,
 }
 
 #[derive(Debug, Clone)]
-#[repr(C)]
+#[repr(C, packed(4))]
 pub struct WasiAddrinfo {
     pub ai_flags: AiFlags,
     pub ai_family: AddressFamily,
@@ -246,25 +256,43 @@ impl WasiAddrinfo {
         sockbuff: &mut Vec<Vec<u8>>,
         ai_canonname: &mut Vec<String>,
     ) -> io::Result<Vec<WasiAddrinfo>> {
-        let node = node.to_string();
-        let service = service.to_string();
+        let mut node = node.to_string();
+        let mut service = service.to_string();
+
+        if !node.ends_with('\0') {
+            node.push('\0');
+        }
+
+        if !service.ends_with('\0') {
+            service.push('\0');
+        }
+
         let mut res_len: u32 = 0;
-        let mut wasiaddrinfo_array: Vec<WasiAddrinfo> = Vec::<WasiAddrinfo>::new();
-        for i in 0..max_reslen {
-            sockbuff.push(vec![0u8; 14]);
-            sockaddr.push(WasiSockaddr::new(AddressFamily::Inet4, &mut sockbuff[i]));
-            ai_canonname.push(String::with_capacity(30));
-            wasiaddrinfo_array.push(WasiAddrinfo {
+        sockbuff.resize(max_reslen, vec![0u8; 14]);
+        ai_canonname.resize(max_reslen, String::with_capacity(30));
+        sockaddr.resize(max_reslen, WasiSockaddr::default());
+        let mut wasiaddrinfo_array: Vec<WasiAddrinfo> = Vec::new();
+        wasiaddrinfo_array.resize(
+            max_reslen,
+            WasiAddrinfo {
                 ai_flags: AiFlags::AiPassive,
                 ai_family: AddressFamily::Inet6,
                 ai_socktype: SocketType::Datagram,
                 ai_protocol: AiProtocol::IPProtoTCP,
-                ai_addr: &mut sockaddr[i],
+                ai_addr: std::ptr::null_mut(),
                 ai_addrlen: 0,
-                ai_canonname: ai_canonname[i].as_mut_ptr(),
+                ai_canonname: std::ptr::null_mut(),
                 ai_canonnamelen: 30,
                 ai_next: std::ptr::null_mut(),
-            });
+            },
+        );
+        for i in 0..max_reslen {
+            sockaddr[i].sa_data = sockbuff[i].as_mut_ptr();
+            wasiaddrinfo_array[i].ai_addr = &mut sockaddr[i];
+            wasiaddrinfo_array[i].ai_canonname = ai_canonname[i].as_mut_ptr();
+            if i.gt(&0) {
+                wasiaddrinfo_array[i - 1].ai_next = &mut wasiaddrinfo_array[i];
+            }
         }
         let mut res = wasiaddrinfo_array.as_mut_ptr() as u32;
         unsafe {
