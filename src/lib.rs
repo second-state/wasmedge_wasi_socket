@@ -630,3 +630,34 @@ impl UdpSocket {
         Ok(sent)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_dns_query() {
+        let node = String::from("www.rust-lang");
+        let service = String::from("http");
+        let hints: WasiAddrinfo = WasiAddrinfo::default();
+        let mut sockaddr = Vec::new();
+        let mut sockbuff = Vec::new();
+        let mut ai_canonname = Vec::new();
+        let addrinfo = WasiAddrinfo::get_addrinfo(
+            &node,
+            &service,
+            &hints,
+            10,
+            &mut sockaddr,
+            &mut sockbuff,
+            &mut ai_canonname,
+        )
+        .unwrap();
+        assert!(addrinfo.len() > 0);
+    }
+
+    #[test]
+    fn test_tcp_listen() {
+        let _ = TcpListener::bind("127.0.0.1:52222", true).unwrap();
+    }
+}

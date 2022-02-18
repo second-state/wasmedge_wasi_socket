@@ -24,3 +24,10 @@ jobs:
       run: |
         export PATH="$HOME/.cargo/bin:$PATH"
         cargo build --examples
+    - name: install WasmEdge
+      run: |
+        curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash
+    - name: run unit tests
+      run: |
+        source /home/runner/.wasmedge/env
+        cargo test
