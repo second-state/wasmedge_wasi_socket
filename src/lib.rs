@@ -145,6 +145,8 @@ extern "C" {
         addr_type: *mut u32,
         port: *mut u32,
     ) -> u32;
+    pub fn sock_setsockopt(fd: u32, level: i32, name: i32, flag: *const i32, flag_size: u32)
+        -> u32;
 }
 
 /// Set the flags associated with a file descriptor.
@@ -327,8 +329,33 @@ impl AsRawFd for SocketHandle {
     }
 }
 
-#[non_exhaustive]
 #[derive(Copy, Clone, Debug)]
+#[repr(u8, align(1))]
+pub enum SocketOptLevel {
+    SolSocket = 0,
+}
+
+#[derive(Copy, Clone, Debug)]
+#[repr(u8, align(1))]
+pub enum SocketOptName {
+    SoReuseaddr = 0,
+    SoType = 1,
+    SoError = 2,
+    SoDontroute = 3,
+    SoBroadcast = 4,
+    SoSndbuf = 5,
+    SoRcvbuf = 6,
+    SoKeepalive = 7,
+    SoOobinline = 8,
+    SoLinger = 9,
+    SoRcvlowat = 10,
+    SoRcvtimeo = 11,
+    SoSndtimeo = 12,
+    SoAcceptconn = 13,
+}
+
+#[non_exhaustive]
+#[derive(Clone, Debug)]
 pub struct TcpStream {
     fd: SocketHandle,
 }
@@ -503,6 +530,12 @@ impl Write for TcpStream {
     }
 }
 
+impl Drop for TcpStream {
+    fn drop(&mut self) {
+        _ = self.shutdown(Shutdown::Both);
+    }
+}
+
 impl TcpListener {
     /// Create TCP socket and bind to the given address.
     ///
@@ -532,6 +565,15 @@ impl TcpListener {
                 set_fdflag(fd, FDFLAGS_NONBLOCK).unwrap();
             }
 
+            let opt_reuse = 1;
+            let opt_reuse_ptr: *const i32 = &opt_reuse;
+            sock_setsockopt(
+                fd,
+                SocketOptLevel::SolSocket as i32,
+                SocketOptName::SoReuseaddr as i32,
+                opt_reuse_ptr,
+                std::mem::size_of::<i32>() as u32,
+            );
             sock_bind(fd, &mut addr, port as u32);
             sock_listen(fd, 128);
             Some((SocketHandle(fd), addr, port))
