@@ -24,3 +24,6 @@ jobs:
       run: |
         export PATH="$HOME/.cargo/bin:$PATH"
         cargo build --examples
+    - name: test publish
+      run: |
+        cargo publish --dry-run
