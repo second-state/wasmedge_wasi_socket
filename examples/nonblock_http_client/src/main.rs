@@ -1,15 +1,20 @@
 use httparse::{Response, EMPTY_HEADER};
 use std::io::{self, Read, Write};
 use std::str::from_utf8;
-use wasmedge_wasi_socket::TcpStream;
+use wasmedge_wasi_socket::{TcpStream,nslookup};
 
 fn main() {
-    let req = "GET / HTTP/1.0\n\n";
-    let mut first_connection = TcpStream::connect("127.0.0.1:80").unwrap();
+    let addrs = nslookup("httpbin.org","http").unwrap();
+    assert!(!addrs.is_empty());
+
+    let addr = addrs[0];
+
+    let req = "GET /get HTTP/1.0\n\n";
+    let mut first_connection = TcpStream::connect(addr.to_string()).unwrap();
     first_connection.set_nonblocking(true).unwrap();
     first_connection.write_all(req.as_bytes()).unwrap();
 
-    let mut second_connection = TcpStream::connect("127.0.0.1:80").unwrap();
+    let mut second_connection = TcpStream::connect(addr.to_string()).unwrap();
     second_connection.set_nonblocking(true).unwrap();
     second_connection.write_all(req.as_bytes()).unwrap();
 
