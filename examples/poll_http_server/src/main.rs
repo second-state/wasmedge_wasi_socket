@@ -95,6 +95,9 @@ fn handle_connection(
                 Err(ref err) if would_block(err) => {
                     if bytes_read != 0 {
                         let received_data = &received_data[..bytes_read];
+                        if !received_data.ends_with(b"\r\n\r\n") {
+                            continue;
+                        }
                         let mut bs: parsed::stream::ByteStream =
                             match String::from_utf8(received_data.to_vec()) {
                                 Ok(s) => s,
