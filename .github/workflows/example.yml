@@ -57,14 +57,14 @@ jobs:
         kill -9 `cat wasmedge.pid`
         rm wasmedge.pid
 
-    - name: HTTP async server example
-      run: |
-        cd examples/poll_http_server/
-        cargo build --target wasm32-wasi --release
-        nohup wasmedge target/wasm32-wasi/release/poll_http_server.wasm &
-        echo $! > wasmedge.pid
-        sleep 5
-        resp=$(curl -X POST http://127.0.0.1:1234 -d "name=WasmEdge")
-        echo "Server response is $resp"
-        kill -9 `cat wasmedge.pid`
-        rm wasmedge.pid
+    # - name: HTTP async server example
+    #   run: |
+    #     cd examples/poll_http_server/
+    #     cargo build --target wasm32-wasi --release
+    #     nohup wasmedge target/wasm32-wasi/release/poll_http_server.wasm &
+    #     echo $! > wasmedge.pid
+    #     sleep 5
+    #     resp=$(curl -X POST http://127.0.0.1:1234 -d "name=WasmEdge")
+    #     echo "Server response is $resp"
+    #     kill -9 `cat wasmedge.pid`
+    #     rm wasmedge.pid
