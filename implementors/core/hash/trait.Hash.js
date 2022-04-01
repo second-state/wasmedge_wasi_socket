@@ -1,3 +1,0 @@
-(function() {var implementors = {};
-implementors["wasmedge_wasi_socket"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/hash/trait.Hash.html\" title=\"trait core::hash::Hash\">Hash</a> for <a class=\"struct\" href=\"wasmedge_wasi_socket/poll/struct.Token.html\" title=\"struct wasmedge_wasi_socket::poll::Token\">Token</a>","synthetic":false,"types":["wasmedge_wasi_socket::poll::Token"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
