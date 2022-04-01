@@ -4,7 +4,7 @@ use wasmedge_wasi_socket::{Ipv4Addr, SocketAddr, WasiAddrinfo};
 
 fn main() {
     let node = "google.com";
-    let service = "https";
+    let service = "http";
     let hints: WasiAddrinfo = WasiAddrinfo::default();
     let mut sockaddrs = Vec::new();
     let mut sockbuffs = Vec::new();
