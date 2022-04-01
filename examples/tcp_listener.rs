@@ -19,5 +19,5 @@ fn main() -> std::io::Result<()> {
     let port = std::env::var("PORT").unwrap_or("1234".to_string());
     println!("listening at 127.0.0.1:{}", port);
     let listener = TcpListener::bind(format!("127.0.0.1:{}", port), false)?;
-    handle_client(listener.accept(0).unwrap())
+    handle_client(listener.accept(false).unwrap())
 }

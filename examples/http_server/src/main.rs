@@ -52,10 +52,10 @@ fn handle_client(mut stream: TcpStream) -> std::io::Result<()> {
 }
 
 fn main() -> std::io::Result<()> {
-    let port = std::env::var("PORT").unwrap_or(1234.to_string());
+    let port = std::env::var("PORT").unwrap_or("1234".to_string());
     println!("new connection at {}", port);
     let listener = TcpListener::bind(format!("0.0.0.0:{}", port), false)?;
     loop {
-        let _ = handle_client(listener.accept(0)?.0);
+        let _ = handle_client(listener.accept(false)?.0);
     }
 }

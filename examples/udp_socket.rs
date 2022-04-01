@@ -3,7 +3,7 @@ use wasmedge_wasi_socket::UdpSocket;
 fn main() -> std::io::Result<()> {
     let socket = UdpSocket::bind("0.0.0.0:0")?;
 
-    let port = std::env::var("PORT").unwrap_or(0.to_string());
+    let port = std::env::var("PORT").unwrap_or("0".to_string());
     let addr = format!("127.0.0.1:{}", port);
 
     socket.send_to(b"hello", &addr)?;

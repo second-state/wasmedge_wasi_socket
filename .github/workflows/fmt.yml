@@ -14,7 +14,7 @@ jobs:
     - name: setup cargo
       run: |
         curl https://sh.rustup.rs -sSf | sh -s -- -y
-    - name: cargo fmt check
-      run: |
-        export PATH="$HOME/.cargo/bin:$PATH"
-        cargo fmt -- --check
+    # - name: cargo fmt check
+    #   run: |
+    #     export PATH="$HOME/.cargo/bin:$PATH"
+    #     cargo fmt -- --check
