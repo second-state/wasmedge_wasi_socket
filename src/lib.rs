@@ -2,8 +2,12 @@ pub mod poll;
 pub mod socket;
 mod wasi_poll;
 
-use std::{io::{self, Read, Write}, os::wasi::prelude::AsRawFd, net::SocketAddrV4};
 pub use std::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr, ToSocketAddrs};
+use std::{
+    io::{self, Read, Write},
+    net::SocketAddrV4,
+    os::wasi::prelude::AsRawFd,
+};
 
 pub use socket::WasiAddrinfo;
 
@@ -66,9 +70,13 @@ impl TcpStream {
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.s.set_nonblocking(nonblocking)
     }
+
+    pub fn new(s: socket::Socket) -> Self {
+        Self { s }
+    }
 }
 
-impl AsRawFd for TcpStream{
+impl AsRawFd for TcpStream {
     fn as_raw_fd(&self) -> std::os::wasi::prelude::RawFd {
         self.s.as_raw_fd()
     }
@@ -101,7 +109,11 @@ impl TcpListener {
         let bind = |addrs, nonblocking| {
             let addr_family = socket::AddressFamily::from(&addrs);
             let s = socket::Socket::new(addr_family, socket::SocketType::Stream)?;
-            s.setsockopt(socket::SocketOptLevel::SolSocket, socket::SocketOptName::SoReuseaddr, 1i32)?;
+            s.setsockopt(
+                socket::SocketOptLevel::SolSocket,
+                socket::SocketOptName::SoReuseaddr,
+                1i32,
+            )?;
             s.bind(&addrs)?;
             s.listen(128)?;
             s.set_nonblocking(nonblocking)?;
@@ -202,7 +214,6 @@ impl AsRawFd for UdpSocket {
         self.s.as_raw_fd()
     }
 }
-
 
 pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
     let hints: WasiAddrinfo = WasiAddrinfo::default();
