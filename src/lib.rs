@@ -77,10 +77,9 @@ impl TcpStream {
         Self { s }
     }
 
-    fn poll_write_priv(&mut self, cx: &mut Context<'_>, buf: &[u8]) -> Poll<io::Result<usize>> {
+    fn poll_write_priv(&mut self, _cx: &mut Context<'_>, buf: &[u8]) -> Poll<io::Result<usize>> {
         let this = self;
         match std::io::Write::write(this, buf) {
-            // match std::io::Read::read(this, b) {
             Ok(ret) => return Poll::Ready(Ok(ret)),
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => return Poll::Pending,
             Err(e) => return Poll::Ready(Err(e)),
@@ -185,10 +184,10 @@ impl AsyncWrite for TcpStream {
     ) -> Poll<Result<usize, io::Error>> {
         self.poll_write_priv(cx, buf)
     }
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
+    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
         Poll::Ready(Ok(()))
     }
-    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
+    fn poll_shutdown(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
         self.shutdown(Shutdown::Both)?;
         Poll::Ready(Ok(()))
     }
