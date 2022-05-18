@@ -283,8 +283,9 @@ mod wasi_sock {
             buf: *mut u8,
             buf_len: u32,
             addr: *mut u8,
-            addr_len: *mut u32,
             flags: u16,
+            recv_len: *mut usize,
+            oflags: *mut usize,
         ) -> u32;
         pub fn sock_send(
             fd: u32,
@@ -298,8 +299,9 @@ mod wasi_sock {
             buf: *const u8,
             buf_len: u32,
             addr: *const u8,
-            addr_len: u32,
+            port: u32,
             flags: u16,
+            send_len: *mut u32,
         ) -> u32;
         pub fn sock_shutdown(fd: u32, flags: u8) -> u32;
         pub fn sock_getaddrinfo(
@@ -380,17 +382,25 @@ impl Socket {
 
     pub fn send_to(&self, buf: &[u8], addr: SocketAddr) -> io::Result<usize> {
         let addr_s = CString::new(addr.to_string()).expect("CString::new");
-        let sent = unsafe {
-            sock_send_to(
+        let port = 0;
+        let flags = 0;
+        let mut send_len: u32 = 0;
+        unsafe {
+            let res = sock_send_to(
                 self.fd as u32,
                 buf.as_ptr() as *const u8,
                 buf.len() as u32,
                 addr_s.as_ptr() as *const u8,
-                addr_s.as_bytes().len() as u32,
-                0,
-            )
-        } as usize;
-        Ok(sent)
+                port,
+                flags,
+                &mut send_len
+                );
+            if res == 0 {
+                Ok(send_len as usize)
+            } else {
+                Err(io::Error::from_raw_os_error(res as i32))
+            }
+        }
     }
 
     pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -420,29 +430,35 @@ impl Socket {
     }
 
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
-        let mut addr_len: u32 = 0;
+        let flags = 0;
         let mut addr_buf = [0; 32];
-        let size = unsafe {
-            sock_recv_from(
-                self.fd as u32,
+        let mut recv_len: usize = 0;
+        let mut oflags: usize = 0;
+        unsafe {
+            let res = sock_recv_from(
+                self.as_raw_fd() as u32,
                 buf.as_ptr() as *mut u8,
                 buf.len() as u32,
                 addr_buf.as_ptr() as *mut u8,
-                &mut addr_len,
-                0,
-            )
-        } as usize;
-
-        let addr_buf = &mut addr_buf[..size];
-        Ok((
-            size,
-            CString::new(addr_buf)
-                .expect("CString::new")
-                .into_string()
-                .expect("CString::into_string")
-                .parse::<SocketAddr>()
-                .expect("String::parse::<SocketAddr>"),
-        ))
+                flags,
+                &mut recv_len,
+                &mut oflags,
+            );
+            if res == 0 {
+                let addr_buf = &mut addr_buf[..recv_len];
+                Ok((
+                        recv_len,
+                        CString::new(addr_buf)
+                        .expect("CString::new")
+                        .into_string()
+                        .expect("CString::into_string")
+                        .parse::<SocketAddr>()
+                        .expect("String::parse::<SocketAddr>"),
+                        ))
+            } else {
+                Err(io::Error::from_raw_os_error(res as i32))
+            }
+        }
     }
 
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
