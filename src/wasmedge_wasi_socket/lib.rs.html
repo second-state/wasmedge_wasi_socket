@@ -366,6 +366,10 @@
 <span id="359">359</span>
 <span id="360">360</span>
 <span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
 </pre><pre class="rust"><code><span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">executor</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">poll</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">socket</span>;
@@ -711,6 +715,10 @@
         }
 
         <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">sockaddr</span>.<span class="ident">family</span> {
+            <span class="ident">socket::AddressFamily::Unspec</span> =&gt; {
+                <span class="comment">//unimplemented!(&quot;not support unspec&quot;)</span>
+                <span class="kw">continue</span>;
+            }
             <span class="ident">socket::AddressFamily::Inet4</span> =&gt; {
                 <span class="kw">let</span> <span class="ident">port_buf</span> <span class="op">=</span> [<span class="ident">sockbuff</span>[<span class="number">0</span>], <span class="ident">sockbuff</span>[<span class="number">1</span>]];
                 <span class="kw">let</span> <span class="ident">port</span> <span class="op">=</span> <span class="ident">u16::from_be_bytes</span>(<span class="ident">port_buf</span>);
@@ -718,7 +726,7 @@
                 <span class="ident">SocketAddr::V4</span>(<span class="ident">SocketAddrV4::new</span>(<span class="ident">ip</span>, <span class="ident">port</span>))
             }
             <span class="ident">socket::AddressFamily::Inet6</span> =&gt; {
-                <span class="comment">// unimplemented!(&quot;not support IPv6&quot;)</span>
+                <span class="comment">//unimplemented!(&quot;not support IPv6&quot;)</span>
                 <span class="kw">continue</span>;
             }
         };
