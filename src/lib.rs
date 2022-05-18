@@ -343,6 +343,10 @@ pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
         }
 
         let addr = match sockaddr.family {
+            socket::AddressFamily::Unspec => {
+                //unimplemented!("not support unspec")
+                continue;
+            }
             socket::AddressFamily::Inet4 => {
                 let port_buf = [sockbuff[0], sockbuff[1]];
                 let port = u16::from_be_bytes(port_buf);
@@ -350,7 +354,7 @@ pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
                 SocketAddr::V4(SocketAddrV4::new(ip, port))
             }
             socket::AddressFamily::Inet6 => {
-                // unimplemented!("not support IPv6")
+                //unimplemented!("not support IPv6")
                 continue;
             }
         };

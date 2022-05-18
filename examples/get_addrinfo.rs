@@ -29,6 +29,10 @@ fn main() {
         }
 
         let addr = match sockaddr.family {
+            wasmedge_wasi_socket::socket::AddressFamily::Unspec => {
+                //unimplemented!("not support unspec")
+                continue;
+            }
             wasmedge_wasi_socket::socket::AddressFamily::Inet4 => {
                 let port_buf = [sockbuff[0], sockbuff[1]];
                 let port = u16::from_be_bytes(port_buf);
