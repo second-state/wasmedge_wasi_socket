@@ -6,20 +6,27 @@ use std::os::wasi::prelude::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 #[derive(Copy, Clone, Debug)]
 #[repr(u8, align(1))]
 pub enum AddressFamily {
+    Unspec,
     Inet4,
     Inet6,
 }
 
+#[allow(unreachable_patterns)]
 impl From<&SocketAddr> for AddressFamily {
     fn from(addr: &SocketAddr) -> Self {
         match addr {
             SocketAddr::V4(_) => AddressFamily::Inet4,
             SocketAddr::V6(_) => AddressFamily::Inet6,
+            _ => AddressFamily::Unspec,
         }
     }
 }
 
 impl AddressFamily {
+    pub fn is_unspec(&self) -> bool {
+        matches!(*self, AddressFamily::Unspec)
+    }
+
     pub fn is_v4(&self) -> bool {
         matches!(*self, AddressFamily::Inet4)
     }
@@ -32,6 +39,7 @@ impl AddressFamily {
 #[derive(Copy, Clone, Debug)]
 #[repr(u8, align(1))]
 pub enum SocketType {
+    Any,
     Datagram,
     Stream,
 }
@@ -60,6 +68,7 @@ pub enum AiFlags {
 #[derive(Copy, Clone, Debug)]
 #[repr(u8, align(1))]
 pub enum AiProtocol {
+    IPProtoIP,
     IPProtoTCP,
     IPProtoUDP,
 }
