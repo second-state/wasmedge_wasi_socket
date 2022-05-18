@@ -1,11 +1,17 @@
+pub mod executor;
 pub mod poll;
 pub mod socket;
-mod wasi_poll;
-
-use std::{io::{self, Read, Write}, os::wasi::prelude::AsRawFd, net::SocketAddrV4};
-pub use std::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr, ToSocketAddrs};
-
+pub mod wasi_poll;
 pub use socket::WasiAddrinfo;
+pub use std::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr, ToSocketAddrs};
+use std::pin::Pin;
+use std::task::{Context, Poll};
+use std::{
+    io::{self, Read, Write},
+    net::SocketAddrV4,
+    os::wasi::prelude::{AsRawFd, FromRawFd, IntoRawFd},
+};
+use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 
 #[derive(Debug)]
 pub struct TcpStream {
@@ -66,11 +72,67 @@ impl TcpStream {
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.s.set_nonblocking(nonblocking)
     }
+
+    pub fn new(s: socket::Socket) -> Self {
+        Self { s }
+    }
+
+    fn poll_write_priv(&mut self, _cx: &mut Context<'_>, buf: &[u8]) -> Poll<io::Result<usize>> {
+        let this = self;
+        match std::io::Write::write(this, buf) {
+            Ok(ret) => return Poll::Ready(Ok(ret)),
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => return Poll::Pending,
+            Err(e) => return Poll::Ready(Err(e)),
+        }
+    }
+
+    fn poll_read_priv(
+        mut self: Pin<&mut Self>,
+        _cx: &mut Context<'_>,
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<io::Result<()>> {
+        let this = &mut *self;
+        let mut inner = || {
+            let b = unsafe {
+                &mut *(buf.unfilled_mut() as *mut [std::mem::MaybeUninit<u8>] as *mut [u8])
+            };
+            match std::io::Read::read(this, b) {
+                Ok(ret) => return Poll::Ready(Ok(ret)),
+                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => return Poll::Pending,
+                Err(e) => return Poll::Ready(Err(e)),
+            }
+        };
+
+        let n = match inner()? {
+            Poll::Ready(t) => t,
+            Poll::Pending => return Poll::Pending,
+        };
+
+        unsafe {
+            buf.assume_init(n);
+            buf.advance(n);
+        }
+        return Poll::Ready(Ok(()));
+    }
 }
 
-impl AsRawFd for TcpStream{
+impl AsRawFd for TcpStream {
     fn as_raw_fd(&self) -> std::os::wasi::prelude::RawFd {
         self.s.as_raw_fd()
+    }
+}
+
+impl IntoRawFd for TcpStream {
+    fn into_raw_fd(self) -> std::os::wasi::prelude::RawFd {
+        self.s.into_raw_fd()
+    }
+}
+
+impl FromRawFd for TcpStream {
+    unsafe fn from_raw_fd(fd: std::os::wasi::prelude::RawFd) -> Self {
+        Self {
+            s: socket::Socket::from_raw_fd(fd),
+        }
     }
 }
 
@@ -89,6 +151,48 @@ impl Write for TcpStream {
     }
 }
 
+impl Read for &TcpStream {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.s.recv(buf)
+    }
+}
+
+impl Write for &TcpStream {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.s.send(buf)
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+impl AsyncRead for TcpStream {
+    fn poll_read(
+        self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<io::Result<()>> {
+        self.poll_read_priv(cx, buf)
+    }
+}
+
+impl AsyncWrite for TcpStream {
+    fn poll_write(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<Result<usize, io::Error>> {
+        self.poll_write_priv(cx, buf)
+    }
+    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
+        Poll::Ready(Ok(()))
+    }
+    fn poll_shutdown(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
+        self.shutdown(Shutdown::Both)?;
+        Poll::Ready(Ok(()))
+    }
+}
+
 impl TcpListener {
     /// Create TCP socket and bind to the given address.
     ///
@@ -101,7 +205,11 @@ impl TcpListener {
         let bind = |addrs, nonblocking| {
             let addr_family = socket::AddressFamily::from(&addrs);
             let s = socket::Socket::new(addr_family, socket::SocketType::Stream)?;
-            s.setsockopt(socket::SocketOptLevel::SolSocket, socket::SocketOptName::SoReuseaddr, 1i32)?;
+            s.setsockopt(
+                socket::SocketOptLevel::SolSocket,
+                socket::SocketOptName::SoReuseaddr,
+                1i32,
+            )?;
             s.bind(&addrs)?;
             s.listen(128)?;
             s.set_nonblocking(nonblocking)?;
@@ -140,6 +248,12 @@ impl TcpListener {
 impl AsRawFd for TcpListener {
     fn as_raw_fd(&self) -> std::os::wasi::prelude::RawFd {
         self.s.as_raw_fd()
+    }
+}
+
+impl IntoRawFd for TcpListener {
+    fn into_raw_fd(self) -> std::os::wasi::prelude::RawFd {
+        self.s.into_raw_fd()
     }
 }
 
@@ -202,7 +316,6 @@ impl AsRawFd for UdpSocket {
         self.s.as_raw_fd()
     }
 }
-
 
 pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
     let hints: WasiAddrinfo = WasiAddrinfo::default();

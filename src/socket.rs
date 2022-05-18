@@ -1,7 +1,7 @@
 use std::ffi::CString;
 use std::io;
-use std::net::{SocketAddr, Shutdown, SocketAddrV6, SocketAddrV4, Ipv4Addr, Ipv6Addr};
-use std::os::wasi::prelude::{AsRawFd, RawFd};
+use std::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAddrV6};
+use std::os::wasi::prelude::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8, align(1))]
@@ -130,7 +130,7 @@ impl WasiAddrinfo {
         hints: &WasiAddrinfo,
         max_reslen: usize,
         sockaddr: &mut Vec<WasiSockaddr>,
-        sockbuff: &mut Vec<[u8;26]>,
+        sockbuff: &mut Vec<[u8; 26]>,
         ai_canonname: &mut Vec<String>,
     ) -> io::Result<Vec<WasiAddrinfo>> {
         let mut node = node.to_string();
@@ -148,7 +148,7 @@ impl WasiAddrinfo {
         sockbuff.resize(max_reslen, [0u8; 26]);
         ai_canonname.resize(max_reslen, String::with_capacity(30));
         sockaddr.resize(max_reslen, WasiSockaddr::default());
-        let mut wasiaddrinfo_array: Vec<WasiAddrinfo> = vec![WasiAddrinfo::default();max_reslen];
+        let mut wasiaddrinfo_array: Vec<WasiAddrinfo> = vec![WasiAddrinfo::default(); max_reslen];
 
         for i in 0..max_reslen {
             sockaddr[i].sa_data = sockbuff[i].as_mut_ptr();
@@ -190,7 +190,6 @@ pub struct IovecWrite {
     pub buf: *const u8,
     pub size: usize,
 }
-
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8, align(1))]
@@ -253,7 +252,7 @@ fn fcntl_remove(fd: RawFd, get_cmd: i32, set_cmd: i32, flag: i32) -> io::Result<
 }
 
 mod wasi_sock {
-    use super::{WasiAddress,IovecRead,IovecWrite,WasiAddrinfo};
+    use super::{IovecRead, IovecWrite, WasiAddress, WasiAddrinfo};
 
     #[link(wasm_import_module = "wasi_snapshot_preview1")]
     extern "C" {
@@ -342,13 +341,12 @@ pub struct Socket {
 
 use wasi_sock::*;
 impl Socket {
-    
     pub fn new(addr_family: AddressFamily, sock_kind: SocketType) -> io::Result<Self> {
         unsafe {
             let mut fd = 0;
             let res = sock_open(addr_family as u8, sock_kind as u8, &mut fd);
             if res == 0 {
-                Ok(Socket{fd:fd as i32})
+                Ok(Socket { fd: fd as i32 })
             } else {
                 Err(io::Error::from_raw_os_error(res as i32))
             }
@@ -524,7 +522,7 @@ impl Socket {
             if res != 0 {
                 Err(io::Error::from_raw_os_error(res as i32))
             } else {
-                let s = Socket { fd:fd as i32 };
+                let s = Socket { fd: fd as i32 };
                 s.set_nonblocking(nonblocking)?;
                 Ok(s)
             }
@@ -600,7 +598,13 @@ impl Socket {
             let fd = self.fd;
             let mut error = 0;
             let mut len = std::mem::size_of::<i32>() as u32;
-            let res = sock_getsockopt(fd as u32, SocketOptLevel::SolSocket as i32, SocketOptName::SoError as i32, &mut error, &mut len);
+            let res = sock_getsockopt(
+                fd as u32,
+                SocketOptLevel::SolSocket as i32,
+                SocketOptName::SoError as i32,
+                &mut error,
+                &mut len,
+            );
             if res == 0 && error == 0 {
                 Ok(())
             } else if res == 0 && error != 0 {
@@ -611,15 +615,20 @@ impl Socket {
         }
     }
 
-    pub fn setsockopt<T>(&self, level: SocketOptLevel, name: SocketOptName, payload: T) -> io::Result<()> {
+    pub fn setsockopt<T>(
+        &self,
+        level: SocketOptLevel,
+        name: SocketOptName,
+        payload: T,
+    ) -> io::Result<()> {
         unsafe {
             let fd = self.fd as u32;
             let flag = &payload as *const T as *const i32;
             let flag_size = std::mem::size_of::<T>() as u32;
             let e = sock_setsockopt(fd, level as u8 as i32, name as u8 as i32, flag, flag_size);
-            if e == 0{
+            if e == 0 {
                 Ok(())
-            }else{
+            } else {
                 Err(io::Error::from_raw_os_error(e as i32))
             }
         }
@@ -651,5 +660,17 @@ impl Drop for Socket {
 impl AsRawFd for Socket {
     fn as_raw_fd(&self) -> RawFd {
         self.fd
+    }
+}
+
+impl IntoRawFd for Socket {
+    fn into_raw_fd(self) -> RawFd {
+        self.fd.into_raw_fd()
+    }
+}
+
+impl FromRawFd for Socket {
+    unsafe fn from_raw_fd(fd: RawFd) -> Self {
+        Socket { fd }
     }
 }

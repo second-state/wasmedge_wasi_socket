@@ -31,7 +31,7 @@ impl Subscription {
         read_event: bool,
         write_event: bool,
         timeout: Option<std::time::SystemTime>,
-    ) ->Self{
+    ) -> Self {
         let fd = fd.as_raw_fd();
         if let Some(timeout) = timeout {
             Subscription::TimeoutIO {
@@ -184,7 +184,7 @@ fn to_subscription_vec(subs: &[Subscription]) -> Vec<poll::Subscription> {
                 }
             }
         }
-    };
+    }
     fds
 }
 
