@@ -1,5 +1,5 @@
-pub mod executor;
 pub mod poll;
+pub mod runtime;
 pub mod socket;
 pub mod wasi_poll;
 pub use socket::WasiAddrinfo;

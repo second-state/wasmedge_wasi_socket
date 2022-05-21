@@ -18,3 +18,4 @@ path = "src/lib.rs"
 libc = "0.2.3"
 futures = "0.3.21"
 tokio = {version = "1.18.1", features=["io-util"]}
+scoped-tls = "1.0.0"

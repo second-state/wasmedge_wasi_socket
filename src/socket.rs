@@ -393,8 +393,8 @@ impl Socket {
                 addr_s.as_ptr() as *const u8,
                 port,
                 flags,
-                &mut send_len
-                );
+                &mut send_len,
+            );
             if res == 0 {
                 Ok(send_len as usize)
             } else {
@@ -447,14 +447,14 @@ impl Socket {
             if res == 0 {
                 let addr_buf = &mut addr_buf[..recv_len];
                 Ok((
-                        recv_len,
-                        CString::new(addr_buf)
+                    recv_len,
+                    CString::new(addr_buf)
                         .expect("CString::new")
                         .into_string()
                         .expect("CString::into_string")
                         .parse::<SocketAddr>()
                         .expect("String::parse::<SocketAddr>"),
-                        ))
+                ))
             } else {
                 Err(io::Error::from_raw_os_error(res as i32))
             }

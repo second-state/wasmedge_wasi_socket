@@ -1,13 +1,11 @@
+use std::io;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use wasmedge_wasi_socket::executor::Executor;
-use wasmedge_wasi_socket::TcpStream;
+use wasmedge_wasi_socket::runtime::{spawn, AsyncTcpStream, Executor};
 
-async fn stream_test() -> std::io::Result<()> {
+async fn stream_test() -> io::Result<()> {
     let port = std::env::var("PORT").unwrap_or("8080".to_string());
     println!("connect to 127.0.0.1:{}", port);
-    let mut stream = TcpStream::connect(format!("127.0.0.1:{}", port))?;
-    stream.set_nonblocking(true)?;
-
+    let mut stream = AsyncTcpStream::connect(format!("127.0.0.1:{}", port))?;
     // send the message, remember to add '\n'
     stream.write_all(b"hello world\n").await?;
 
@@ -17,24 +15,17 @@ async fn stream_test() -> std::io::Result<()> {
     Ok(())
 }
 
-fn main() {
+fn main() -> io::Result<()> {
     let mut executor = Executor::new();
-
-    executor.spawn(async {
-        println!("request two!");
-        if let Err(e) = stream_test().await {
-            println!("{e:?}");
-        }
-    });
-    executor.spawn(async {
-        println!("request two!");
-        if let Err(e) = stream_test().await {
-            println!("{e:?}");
-        }
-    });
-    executor.spawn(async {
-        println!("Another block!");
-    });
-
-    executor.run();
+    async fn print() -> io::Result<()> {
+        println!("Hello world");
+        spawn(async {
+            println!("dummy task!");
+        });
+        stream_test().await?;
+        println!("finish request!");
+        Ok(())
+    }
+    executor.block_on(print)?;
+    Ok(())
 }
