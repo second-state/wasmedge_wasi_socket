@@ -69,3 +69,14 @@ jobs:
     #     echo "Server response is $resp"
     #     kill -9 `cat wasmedge.pid`
     #     rm wasmedge.pid
+
+    - name: TCP async client example
+      run: |
+        cd examples/async_tcp_stream/
+        cargo build --target wasm32-wasi --release
+        nohup python3 ./server.py &
+        echo $! > pyserver.pid
+        sleep 5
+        wasmedge target/wasm32-wasi/release/async_tcp_stream.wasm
+        kill -9 `cat pyserver.pid`
+        rm pyserver.pid
