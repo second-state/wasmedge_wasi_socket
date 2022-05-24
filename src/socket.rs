@@ -1,4 +1,3 @@
-use std::ffi::CString;
 use std::io;
 use std::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::os::wasi::prelude::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
@@ -6,6 +5,7 @@ use std::os::wasi::prelude::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 #[derive(Copy, Clone, Debug)]
 #[repr(u8, align(1))]
 pub enum AddressFamily {
+    #[cfg(feature = "wasmedge_0_10")]
     Unspec,
     Inet4,
     Inet6,
@@ -17,12 +17,14 @@ impl From<&SocketAddr> for AddressFamily {
         match addr {
             SocketAddr::V4(_) => AddressFamily::Inet4,
             SocketAddr::V6(_) => AddressFamily::Inet6,
+            #[cfg(feature = "wasmedge_0_10")]
             _ => AddressFamily::Unspec,
         }
     }
 }
 
 impl AddressFamily {
+    #[cfg(feature = "wasmedge_0_10")]
     pub fn is_unspec(&self) -> bool {
         matches!(*self, AddressFamily::Unspec)
     }
@@ -39,6 +41,7 @@ impl AddressFamily {
 #[derive(Copy, Clone, Debug)]
 #[repr(u8, align(1))]
 pub enum SocketType {
+    #[cfg(feature = "wasmedge_0_10")]
     Any,
     Datagram,
     Stream,
@@ -68,6 +71,7 @@ pub enum AiFlags {
 #[derive(Copy, Clone, Debug)]
 #[repr(u8, align(1))]
 pub enum AiProtocol {
+    #[cfg(feature = "wasmedge_0_10")]
     IPProtoIP,
     IPProtoTCP,
     IPProtoUDP,
@@ -182,7 +186,7 @@ impl WasiAddrinfo {
             );
             match return_code {
                 0 => Ok(wasiaddrinfo_array[..res_len as usize].to_vec()),
-                _ => Err(std::io::Error::last_os_error()),
+                e => Err(std::io::Error::from_raw_os_error(e as i32)),
             }
         }
     }
@@ -278,9 +282,10 @@ mod wasi_sock {
             recv_len: *mut usize,
             oflags: *mut usize,
         ) -> u32;
+        #[cfg(feature = "wasmedge_0_10")]
         pub fn sock_recv_from(
             fd: u32,
-            buf: *mut u8,
+            buf: *mut IovecRead,
             buf_len: u32,
             addr: *mut u8,
             flags: u16,
@@ -294,9 +299,10 @@ mod wasi_sock {
             flags: u16,
             send_len: *mut u32,
         ) -> u32;
+        #[cfg(feature = "wasmedge_0_10")]
         pub fn sock_send_to(
             fd: u32,
-            buf: *const u8,
+            buf: *const IovecWrite,
             buf_len: u32,
             addr: *const u8,
             port: u32,
@@ -380,27 +386,46 @@ impl Socket {
         }
     }
 
+    #[cfg(feature = "wasmedge_0_10")]
     pub fn send_to(&self, buf: &[u8], addr: SocketAddr) -> io::Result<usize> {
-        let addr_s = CString::new(addr.to_string()).expect("CString::new");
-        let port = 0;
+        let port = addr.port() as u32;
+        let vaddr = match addr {
+            SocketAddr::V4(ipv4) => ipv4.ip().octets().to_vec(),
+            SocketAddr::V6(ipv6) => ipv6.ip().octets().to_vec(),
+        };
+        let addr = WasiAddress {
+            buf: vaddr.as_ptr(),
+            size: vaddr.len(),
+        };
+
+        let vec = IovecWrite {
+            buf: buf.as_ptr(),
+            size: buf.len(),
+        };
+
         let flags = 0;
         let mut send_len: u32 = 0;
         unsafe {
             let res = sock_send_to(
                 self.fd as u32,
-                buf.as_ptr() as *const u8,
-                buf.len() as u32,
-                addr_s.as_ptr() as *const u8,
+                &vec,
+                1,
+                &addr as *const WasiAddress as *const u8,
                 port,
                 flags,
-                &mut send_len
-                );
+                &mut send_len,
+            );
             if res == 0 {
                 Ok(send_len as usize)
             } else {
                 Err(io::Error::from_raw_os_error(res as i32))
             }
         }
+    }
+
+    #[cfg(feature = "wasmedge_0_9")]
+    pub fn send_to(&self, _buf: &[u8], _addr: SocketAddr) -> io::Result<usize> {
+        Err(io::Error::from(io::ErrorKind::Unsupported))
     }
 
     pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -429,36 +454,68 @@ impl Socket {
         }
     }
 
+    #[cfg(feature = "wasmedge_0_10")]
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         let flags = 0;
-        let mut addr_buf = [0; 32];
+        let addr_buf = [0; 16];
+
+        let mut addr = WasiAddress {
+            buf: addr_buf.as_ptr(),
+            size: 16,
+        };
+
+        let mut recv_buf = IovecRead {
+            buf: buf.as_mut_ptr(),
+            size: buf.len(),
+        };
+
         let mut recv_len: usize = 0;
         let mut oflags: usize = 0;
         unsafe {
             let res = sock_recv_from(
                 self.as_raw_fd() as u32,
-                buf.as_ptr() as *mut u8,
-                buf.len() as u32,
-                addr_buf.as_ptr() as *mut u8,
+                &mut recv_buf,
+                1,
+                &mut addr as *mut WasiAddress as *mut u8,
                 flags,
                 &mut recv_len,
                 &mut oflags,
             );
             if res == 0 {
-                let addr_buf = &mut addr_buf[..recv_len];
-                Ok((
-                        recv_len,
-                        CString::new(addr_buf)
-                        .expect("CString::new")
-                        .into_string()
-                        .expect("CString::into_string")
-                        .parse::<SocketAddr>()
-                        .expect("String::parse::<SocketAddr>"),
-                        ))
+                let sin_family = {
+                    let mut d = [0, 0];
+                    d.clone_from_slice(&addr_buf[0..2]);
+                    u16::from_le_bytes(d)
+                };
+
+                let sin_port = {
+                    let mut d = [0, 0];
+                    d.clone_from_slice(&addr_buf[2..4]);
+                    u16::from_le_bytes(d)
+                };
+
+                let sin_addr = {
+                    if sin_family == 2 {
+                        let ip_addr =
+                            Ipv4Addr::new(addr_buf[4], addr_buf[5], addr_buf[6], addr_buf[7]);
+                        SocketAddr::V4(SocketAddrV4::new(ip_addr, sin_port))
+                    } else {
+                        // fixme
+                        let ip_addr = Ipv6Addr::from([0; 16]);
+                        SocketAddr::V6(SocketAddrV6::new(ip_addr, sin_port, 0, 0))
+                    }
+                };
+
+                Ok((recv_len, sin_addr))
             } else {
                 Err(io::Error::from_raw_os_error(res as i32))
             }
         }
+    }
+
+    #[cfg(feature = "wasmedge_0_9")]
+    pub fn recv_from(&self, _buf: &[u8]) -> io::Result<(usize, SocketAddr)> {
+        Err(io::Error::from(io::ErrorKind::Unsupported))
     }
 
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {

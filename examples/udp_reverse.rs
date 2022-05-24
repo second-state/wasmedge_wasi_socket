@@ -1,7 +1,7 @@
 use wasmedge_wasi_socket::UdpSocket;
 
 fn main() -> std::io::Result<()> {
-    let port = std::env::var("PORT").unwrap_or("0".to_string());
+    let port = std::env::var("PORT").unwrap_or("3000".to_string());
     let socket = UdpSocket::bind(format!("127.0.0.1:{}", port))?;
 
     let mut buf = [0; 128];
