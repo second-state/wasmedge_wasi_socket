@@ -1,7 +1,6 @@
-pub mod executor;
 pub mod poll;
 pub mod socket;
-pub mod wasi_poll;
+mod wasi_poll;
 pub use socket::WasiAddrinfo;
 pub use std::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr, ToSocketAddrs};
 use std::pin::Pin;
