@@ -423,7 +423,7 @@ impl Socket {
         }
     }
 
-    #[cfg(feature = "wasmedge_0_9")]
+    #[cfg(all(feature = "wasmedge_0_9", not(feature = "wasmedge_0_10")))]
     pub fn send_to(&self, _buf: &[u8], _addr: SocketAddr) -> io::Result<usize> {
         Err(io::Error::from(io::ErrorKind::Unsupported))
     }
@@ -513,7 +513,7 @@ impl Socket {
         }
     }
 
-    #[cfg(feature = "wasmedge_0_9")]
+    #[cfg(all(feature = "wasmedge_0_9", not(feature = "wasmedge_0_10")))]
     pub fn recv_from(&self, _buf: &[u8]) -> io::Result<(usize, SocketAddr)> {
         Err(io::Error::from(io::ErrorKind::Unsupported))
     }
