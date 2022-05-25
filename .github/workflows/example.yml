@@ -52,10 +52,20 @@ jobs:
         cargo build --target wasm32-wasi --release
         nohup wasmedge target/wasm32-wasi/release/http_server.wasm &
         echo $! > wasmedge.pid
+        wasmedge_pid=$(cat wasmedge.pid)
         sleep 5
+        echo "fds:"
+        ls /proc/$wasmedge_pid/fd
         resp=$(curl -X POST http://127.0.0.1:1234 -d "name=WasmEdge")
         echo "Server response is $resp"
-        kill -9 `cat wasmedge.pid`
+        resp=$(curl -X POST http://127.0.0.1:1234 -d "name=WasmEdge")
+        resp=$(curl -X POST http://127.0.0.1:1234 -d "name=WasmEdge")
+        resp=$(curl -X POST http://127.0.0.1:1234 -d "name=WasmEdge")
+        resp=$(curl -X POST http://127.0.0.1:1234 -d "name=WasmEdge")
+        resp=$(curl -X POST http://127.0.0.1:1234 -d "name=WasmEdge")
+        echo "after 6 request, fds:"
+        ls /proc/$wasmedge_pid/fd
+        kill -9 $wasmedge_pid
         rm wasmedge.pid
 
     - name: DNS Example
