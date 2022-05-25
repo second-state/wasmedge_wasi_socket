@@ -1,4 +1,4 @@
-name: examples
+name: examples_0.10
 
 on:
   workflow_dispatch:
@@ -30,7 +30,7 @@ jobs:
         rustup target add wasm32-wasi
     - name: Install WasmEdge
       run: |
-        VERSION=0.9.1
+        VERSION=0.10.0-rc.1
         curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | sudo bash -s -- -e all --version=$VERSION --tf-version=$VERSION --tf-deps-version=$VERSION --tf-tools-version=$VERSION --image-version=$VERSION --image-deps-version=$VERSION  -p /usr/local
 
     # Disable this example due to it relies on wasmedge_http_req, which is a cyclic dependence
@@ -43,13 +43,13 @@ jobs:
     - name: HTTP async client example
       run: |
         cd examples/nonblock_http_client/
-        cargo build --target wasm32-wasi --release
+        cargo build --target wasm32-wasi --release --features='wasmedge_wasi_socket/wasmedge_0_10'
         wasmedge target/wasm32-wasi/release/nonblock_http_client.wasm
 
     - name: HTTP server example
       run: |
         cd examples/http_server/
-        cargo build --target wasm32-wasi --release
+        cargo build --target wasm32-wasi --release --features='wasmedge_wasi_socket/wasmedge_0_10'
         nohup wasmedge target/wasm32-wasi/release/http_server.wasm &
         echo $! > wasmedge.pid
         wasmedge_pid=$(cat wasmedge.pid)
@@ -68,7 +68,12 @@ jobs:
         kill -9 $wasmedge_pid
         rm wasmedge.pid
 
+    - name: UDP Socket Example
+      run: |
+        cargo build --target wasm32-wasi --example=udp_socket --release --features=wasmedge_0_10
+        wasmedge target/wasm32-wasi/release/examples/udp_socket.wasm
+
     - name: DNS Example
       run: |
-        cargo build --target wasm32-wasi --example=get_addrinfo --release
+        cargo build --target wasm32-wasi --example=get_addrinfo --release --features=wasmedge_0_10
         wasmedge target/wasm32-wasi/release/examples/get_addrinfo.wasm
