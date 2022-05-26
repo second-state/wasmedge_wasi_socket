@@ -763,6 +763,7 @@
 <span id="756">756</span>
 <span id="757">757</span>
 <span id="758">758</span>
+<span id="759">759</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::io</span>;
 <span class="kw">use</span> <span class="ident">std::net</span>::{<span class="ident">Ipv4Addr</span>, <span class="ident">Ipv6Addr</span>, <span class="ident">Shutdown</span>, <span class="ident">SocketAddr</span>, <span class="ident">SocketAddrV4</span>, <span class="ident">SocketAddrV6</span>};
 <span class="kw">use</span> <span class="ident">std::os::wasi::prelude</span>::{<span class="ident">AsRawFd</span>, <span class="ident">FromRawFd</span>, <span class="ident">IntoRawFd</span>, <span class="ident">RawFd</span>};
@@ -1501,6 +1502,7 @@
 <span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">Socket</span> {
     <span class="kw">fn</span> <span class="ident">drop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
         <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">shutdown</span>(<span class="ident">Shutdown::Both</span>);
+        <span class="kw">unsafe</span> { <span class="ident">libc::close</span>(<span class="self">self</span>.<span class="ident">fd</span>) };
     }
 }
 
@@ -1522,5 +1524,5 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="wasmedge_wasi_socket" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (76761db59 2022-05-24)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="wasmedge_wasi_socket" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (4cbaac699 2022-05-25)" ></div>
 </body></html>
