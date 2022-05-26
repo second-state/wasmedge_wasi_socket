@@ -736,6 +736,9 @@ impl Socket {
 impl Drop for Socket {
     fn drop(&mut self) {
         let _ = self.shutdown(Shutdown::Both);
+        unsafe {
+            libc::close(self.fd);
+        }
     }
 }
 
