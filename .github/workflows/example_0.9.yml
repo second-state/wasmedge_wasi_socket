@@ -1,4 +1,4 @@
-name: examples
+name: examples 0.9
 
 on:
   workflow_dispatch:
@@ -43,13 +43,13 @@ jobs:
     - name: HTTP async client example
       run: |
         cd examples/nonblock_http_client/
-        cargo build --target wasm32-wasi --release
+        cargo build --target wasm32-wasi --release --features='wasmedge_wasi_socket/wasmedge_0_9'
         wasmedge target/wasm32-wasi/release/nonblock_http_client.wasm
 
     - name: HTTP server example
       run: |
         cd examples/http_server/
-        cargo build --target wasm32-wasi --release
+        cargo build --target wasm32-wasi --release --features='wasmedge_wasi_socket/wasmedge_0_9'
         nohup wasmedge target/wasm32-wasi/release/http_server.wasm &
         echo $! > wasmedge.pid
         wasmedge_pid=$(cat wasmedge.pid)
@@ -70,5 +70,5 @@ jobs:
 
     - name: DNS Example
       run: |
-        cargo build --target wasm32-wasi --example=get_addrinfo --release
+        cargo build --target wasm32-wasi --example=get_addrinfo --release --features=wasmedge_0_9
         wasmedge target/wasm32-wasi/release/examples/get_addrinfo.wasm
