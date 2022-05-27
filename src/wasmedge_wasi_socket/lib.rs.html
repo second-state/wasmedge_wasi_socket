@@ -578,7 +578,7 @@
         }
 
         <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">sockaddr</span>.<span class="ident">family</span> {
-            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span><span class="op">=</span><span class="string">&quot;wasmedge_0_10&quot;</span>)]</span>
+            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;wasmedge_0_9&quot;</span>))]</span>
             <span class="ident">socket::AddressFamily::Unspec</span> =&gt; {
                 <span class="comment">//unimplemented!(&quot;not support unspec&quot;)</span>
                 <span class="kw">continue</span>;
@@ -600,5 +600,5 @@
     <span class="prelude-val">Ok</span>(<span class="ident">r_addrs</span>)
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="wasmedge_wasi_socket" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (4cbaac699 2022-05-25)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="wasmedge_wasi_socket" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (490324f7b 2022-05-26)" ></div>
 </body></html>
