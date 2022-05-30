@@ -1,6 +1,7 @@
 use crate::wasi_poll as poll;
 use std::os::wasi::prelude::*;
 
+#[derive(Clone)]
 pub enum Subscription {
     Timeout {
         userdata: u64,

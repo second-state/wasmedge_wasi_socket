@@ -124,6 +124,12 @@ impl Write for &TcpStream {
     }
 }
 
+impl From<socket::Socket> for TcpStream {
+    fn from(s: socket::Socket) -> Self {
+        TcpStream { s }
+    }
+}
+
 impl TcpListener {
     /// Create TCP socket and bind to the given address.
     ///
