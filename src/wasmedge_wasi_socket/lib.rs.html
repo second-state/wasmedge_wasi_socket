@@ -302,6 +302,12 @@
 <span id="295">295</span>
 <span id="296">296</span>
 <span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
 </pre><pre class="rust"><code><span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">poll</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">socket</span>;
 <span class="kw">mod</span> <span class="ident">wasi_poll</span>;
@@ -425,6 +431,12 @@
     }
     <span class="kw">fn</span> <span class="ident">flush</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="ident">io::Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(())
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">socket::Socket</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">TcpStream</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">s</span>: <span class="ident">socket::Socket</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">TcpStream</span> { <span class="ident">s</span> }
     }
 }
 
@@ -600,5 +612,5 @@
     <span class="prelude-val">Ok</span>(<span class="ident">r_addrs</span>)
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="wasmedge_wasi_socket" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (490324f7b 2022-05-26)" ></div>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="wasmedge_wasi_socket" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0-nightly (28b891916 2022-05-29)" ></div>
 </body></html>
