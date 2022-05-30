@@ -18,6 +18,6 @@ path = "src/lib.rs"
 libc = "0.2.3"
 
 [features]
-default = ["wasmedge_0_9"]
+default = ["wasmedge_0_10"]
 wasmedge_0_9 = []
 wasmedge_0_10 = []

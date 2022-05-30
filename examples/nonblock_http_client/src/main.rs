@@ -22,10 +22,10 @@ fn main() {
     let mut first_bytes_read = 0;
     let mut second_buf = vec![0; 4096];
     let mut second_bytes_read = 0;
+    let mut first_complete = false;
+    let mut second_complete = false;
 
     loop {
-        let mut first_complete = false;
-        let mut second_complete = false;
         if !first_complete {
             match read_data(&mut first_connection, &mut first_buf, first_bytes_read) {
                 Ok((bytes_read, false)) => {
