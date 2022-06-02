@@ -211,14 +211,6 @@ pub fn poll(subs: &[Subscription]) -> std::io::Result<Vec<Event>> {
                     });
                 }
                 poll::EVENTTYPE_FD_READ | poll::EVENTTYPE_FD_WRITE => {
-                    if event.fd_readwrite.flags & poll::EVENTRWFLAGS_FD_READWRITE_HANGUP > 0 {
-                        let e = io::Error::new(io::ErrorKind::Other, "no error set after POLLHUP");
-                        events.push(Event {
-                            event_type: EventType::Error(e),
-                            userdata: event.userdata,
-                        });
-                        continue;
-                    }
                     if event.error > 0 {
                         let e = io::Error::from_raw_os_error(event.error as i32);
                         events.push(Event {
@@ -228,15 +220,25 @@ pub fn poll(subs: &[Subscription]) -> std::io::Result<Vec<Event>> {
                         continue;
                     }
 
-                    let event_type = if event.type_ == poll::EVENTTYPE_FD_READ {
-                        EventType::Read
+                    if event.type_ == poll::EVENTTYPE_FD_READ {
+                        events.push(Event {
+                            event_type:EventType::Read,
+                            userdata: event.userdata,
+                        });
                     } else {
-                        EventType::Write
+                        if event.fd_readwrite.flags & poll::EVENTRWFLAGS_FD_READWRITE_HANGUP > 0 {
+                            let e = io::Error::new(io::ErrorKind::NotConnected, "POLLHUP");
+                            events.push(Event {
+                                event_type: EventType::Error(e),
+                                userdata: event.userdata,
+                            });
+                        }else{
+                            events.push(Event {
+                                event_type:EventType::Write,
+                                userdata: event.userdata,
+                            });
+                        }
                     };
-                    events.push(Event {
-                        event_type,
-                        userdata: event.userdata,
-                    });
                 }
                 _ => {}
             }
