@@ -748,7 +748,9 @@ impl AsRawFd for Socket {
 
 impl IntoRawFd for Socket {
     fn into_raw_fd(self) -> RawFd {
-        self.fd.into_raw_fd()
+        let fd = self.fd;
+        std::mem::forget(self);
+        fd
     }
 }
 
