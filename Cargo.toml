@@ -21,3 +21,4 @@ libc = "0.2.3"
 default = ["wasmedge_0_10"]
 wasmedge_0_9 = []
 wasmedge_0_10 = []
+wasi_poll = []

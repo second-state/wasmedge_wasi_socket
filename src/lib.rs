@@ -1,5 +1,8 @@
 pub mod poll;
 pub mod socket;
+#[cfg(feature = "wasi_poll")]
+pub mod wasi_poll;
+#[cfg(not(feature = "wasi_poll"))]
 mod wasi_poll;
 pub use socket::WasiAddrinfo;
 pub use std::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr, ToSocketAddrs};
@@ -17,8 +20,8 @@ pub struct TcpStream {
 #[derive(Debug)]
 pub struct TcpListener {
     s: socket::Socket,
-    pub address: SocketAddr,
-    pub port: u16,
+    pub address: std::io::Result<SocketAddr>,
+    pub port: Option<u16>,
 }
 
 #[derive(Debug)]
@@ -154,8 +157,8 @@ impl TcpListener {
             let port = addrs.port();
             Ok(TcpListener {
                 s,
-                address: addrs,
-                port,
+                address: Ok(addrs),
+                port: Some(port),
             })
         };
 
@@ -180,6 +183,11 @@ impl TcpListener {
     pub fn incoming(&self) -> Incoming<'_> {
         Incoming { listener: self }
     }
+
+    /// Get local address.
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        self.s.get_local()
+    }
 }
 
 impl AsRawFd for TcpListener {
@@ -191,6 +199,27 @@ impl AsRawFd for TcpListener {
 impl IntoRawFd for TcpListener {
     fn into_raw_fd(self) -> std::os::wasi::prelude::RawFd {
         self.s.into_raw_fd()
+    }
+}
+
+impl FromRawFd for TcpListener {
+    unsafe fn from_raw_fd(fd: std::os::wasi::prelude::RawFd) -> Self {
+        let s: socket::Socket = FromRawFd::from_raw_fd(fd);
+        match s.get_local() {
+            Ok(address) => {
+                let port = address.port();
+                TcpListener {
+                    s,
+                    address: Ok(address),
+                    port: Some(port),
+                }
+            }
+            Err(error) => TcpListener {
+                s,
+                address: Err(error),
+                port: None,
+            },
+        }
     }
 }
 
