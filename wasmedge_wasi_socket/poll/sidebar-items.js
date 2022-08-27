@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["EventType",""],["Subscription",""]],"fn":[["poll",""]],"struct":[["Event",""]]});
+window.SIDEBAR_ITEMS = {"enum":[["EventType",""],["Subscription",""]],"fn":[["poll",""]],"struct":[["Event",""]]};
