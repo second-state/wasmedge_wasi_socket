@@ -43,7 +43,7 @@ pub struct Event {
 }
 
 impl Event {
-    pub fn empty()->Self{
+    pub fn empty() -> Self {
         Event {
             userdata: 0,
             error: 0,
@@ -99,7 +99,10 @@ pub struct Subscription {
 
 #[link(wasm_import_module = "wasi_snapshot_preview1")]
 extern "C" {
+    #[cfg(not(feature = "epoll"))]
     pub fn poll_oneoff(arg0: i32, arg1: i32, arg2: i32, arg3: i32) -> i32;
+    #[cfg(feature = "epoll")]
+    pub fn epoll_oneoff(arg0: i32, arg1: i32, arg2: i32, arg3: i32) -> i32;
 }
 
 pub unsafe fn poll(
@@ -108,7 +111,15 @@ pub unsafe fn poll(
     nsubscriptions: usize,
 ) -> std::io::Result<usize> {
     let mut rp0 = 0_usize;
+    #[cfg(not(feature = "epoll"))]
     let ret = poll_oneoff(
+        in_ as i32,
+        out as i32,
+        nsubscriptions as i32,
+        (&mut rp0) as *mut usize as i32,
+    );
+    #[cfg(feature = "epoll")]
+    let ret = epoll_oneoff(
         in_ as i32,
         out as i32,
         nsubscriptions as i32,
