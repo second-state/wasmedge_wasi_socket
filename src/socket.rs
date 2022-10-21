@@ -137,6 +137,7 @@ impl WasiAddrinfo {
     /// Get Address Information
     ///
     /// As calling FFI, use buffer as parameter in order to avoid memory leak.
+    #[cfg(not(feature = "wasmedge_asyncify"))]
     pub fn get_addrinfo(
         node: &str,
         service: &str,
@@ -265,7 +266,7 @@ fn fcntl_remove(fd: RawFd, get_cmd: i32, set_cmd: i32, flag: i32) -> io::Result<
 }
 
 mod wasi_sock {
-    use super::{IovecRead, IovecWrite, WasiAddress, WasiAddrinfo};
+    use super::{IovecRead, IovecWrite, WasiAddress};
 
     #[link(wasm_import_module = "wasi_snapshot_preview1")]
     extern "C" {
@@ -282,12 +283,23 @@ mod wasi_sock {
             recv_len: *mut usize,
             oflags: *mut usize,
         ) -> u32;
-        #[cfg(not(feature = "wasmedge_0_9"))]
+        #[cfg(not(any(feature = "wasmedge_0_9", feature = "wasmedge_asyncify")))]
         pub fn sock_recv_from(
             fd: u32,
             buf: *mut IovecRead,
             buf_len: u32,
             addr: *mut u8,
+            flags: u16,
+            recv_len: *mut usize,
+            oflags: *mut usize,
+        ) -> u32;
+        #[cfg(feature = "wasmedge_asyncify")]
+        pub fn sock_recv_from(
+            fd: u32,
+            buf: *mut IovecRead,
+            buf_len: u32,
+            addr: *mut u8,
+            port: *mut u32,
             flags: u16,
             recv_len: *mut usize,
             oflags: *mut usize,
@@ -310,12 +322,24 @@ mod wasi_sock {
             send_len: *mut u32,
         ) -> u32;
         pub fn sock_shutdown(fd: u32, flags: u8) -> u32;
+
+        #[cfg(feature = "wasmedge_asyncify")]
+        pub fn sock_lookup_ip(
+            host_name: *const u8,
+            host_name_len: u32,
+            lookup_type: u8,
+            addr_buf: *mut u8,
+            addr_buf_max_len: u32,
+            res_size: *mut u32,
+        ) -> u32;
+
+        #[cfg(not(feature = "wasmedge_asyncify"))]
         pub fn sock_getaddrinfo(
             node: *const u8,
             node_len: u32,
             server: *const u8,
             server_len: u32,
-            hint: *const WasiAddrinfo,
+            hint: *const super::WasiAddrinfo,
             res: *mut u32,
             max_len: u32,
             res_len: *mut u32,
@@ -471,6 +495,7 @@ impl Socket {
 
         let mut recv_len: usize = 0;
         let mut oflags: usize = 0;
+        #[cfg(not(feature = "wasmedge_asyncify"))]
         unsafe {
             let res = sock_recv_from(
                 self.as_raw_fd() as u32,
@@ -504,6 +529,33 @@ impl Socket {
                         let ip_addr = Ipv6Addr::from([0; 16]);
                         SocketAddr::V6(SocketAddrV6::new(ip_addr, sin_port, 0, 0))
                     }
+                };
+
+                Ok((recv_len, sin_addr))
+            } else {
+                Err(io::Error::from_raw_os_error(res as i32))
+            }
+        }
+        #[cfg(feature = "wasmedge_asyncify")]
+        unsafe {
+            let mut port = 0u32;
+            let res = sock_recv_from(
+                self.as_raw_fd() as u32,
+                &mut recv_buf,
+                1,
+                &mut addr as *mut WasiAddress as *mut u8,
+                &mut port,
+                flags,
+                &mut recv_len,
+                &mut oflags,
+            );
+            if res == 0 {
+                let sin_addr = if addr.size == 4 {
+                    let ip_addr = Ipv4Addr::new(addr_buf[0], addr_buf[1], addr_buf[2], addr_buf[3]);
+                    SocketAddr::V4(SocketAddrV4::new(ip_addr, port as u16))
+                } else {
+                    let ip_addr = Ipv6Addr::from(addr_buf);
+                    SocketAddr::V6(SocketAddrV6::new(ip_addr, port as u16, 0, 0))
                 };
 
                 Ok((recv_len, sin_addr))
@@ -758,4 +810,70 @@ impl FromRawFd for Socket {
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
         Socket { fd }
     }
+}
+
+#[cfg(feature = "wasmedge_asyncify")]
+pub fn lookup_ipv4(host: &str, max_len: usize) -> io::Result<Vec<Ipv4Addr>> {
+    let host_bytes = host.as_bytes();
+    let mut addrs_buf = vec![0u8; max_len * 4];
+    let mut res_size = 0u32;
+    unsafe {
+        let e = wasi_sock::sock_lookup_ip(
+            host_bytes.as_ptr(),
+            host_bytes.len() as u32,
+            AddressFamily::Inet4 as u8,
+            (&mut addrs_buf).as_mut_ptr(),
+            addrs_buf.len() as u32,
+            &mut res_size,
+        );
+        if e > 0 {
+            return Err(io::Error::from_raw_os_error(e as i32));
+        }
+    };
+
+    let res_size = res_size as usize;
+    let mut result = Vec::with_capacity(res_size);
+    for i in 0..res_size {
+        if let Some(addr_buf) = addrs_buf.get(i * 4..(i + 1) * 4) {
+            let ip = Ipv4Addr::new(addr_buf[0], addr_buf[1], addr_buf[2], addr_buf[3]);
+            result.push(ip);
+        } else {
+            break;
+        }
+    }
+    Ok(result)
+}
+
+#[cfg(feature = "wasmedge_asyncify")]
+pub fn lookup_ipv6(host: &str, max_len: usize) -> io::Result<Vec<Ipv6Addr>> {
+    let host_bytes = host.as_bytes();
+    let mut addrs_buf = vec![0u8; max_len * 16];
+    let mut res_size = 0u32;
+    unsafe {
+        let e = wasi_sock::sock_lookup_ip(
+            host_bytes.as_ptr(),
+            host_bytes.len() as u32,
+            AddressFamily::Inet6 as u8,
+            (&mut addrs_buf).as_mut_ptr(),
+            addrs_buf.len() as u32,
+            &mut res_size,
+        );
+        if e > 0 {
+            return Err(io::Error::from_raw_os_error(e as i32));
+        }
+    };
+
+    let res_size = res_size as usize;
+    let mut result = Vec::with_capacity(res_size);
+    for i in 0..res_size {
+        if let Some(addr_buf) = addrs_buf.get(i * 16..(i + 1) * 16) {
+            let mut ipv6_buf = [0u8; 16];
+            ipv6_buf.copy_from_slice(addr_buf);
+            let ip = Ipv6Addr::from(ipv6_buf);
+            result.push(ip);
+        } else {
+            break;
+        }
+    }
+    Ok(result)
 }

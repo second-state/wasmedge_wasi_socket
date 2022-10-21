@@ -5,10 +5,9 @@ pub mod wasi_poll;
 #[cfg(not(feature = "wasi_poll"))]
 mod wasi_poll;
 pub use socket::WasiAddrinfo;
-pub use std::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr, ToSocketAddrs};
+pub use std::net::{IpAddr, Shutdown, SocketAddr, ToSocketAddrs};
 use std::{
     io::{self, Read, Write},
-    net::SocketAddrV4,
     os::wasi::prelude::{AsRawFd, FromRawFd, IntoRawFd},
 };
 
@@ -283,7 +282,11 @@ impl AsRawFd for UdpSocket {
     }
 }
 
+#[cfg(not(feature = "wasmedge_asyncify"))]
 pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
+    use std::net::Ipv4Addr;
+    use std::net::SocketAddrV4;
+
     let hints: WasiAddrinfo = WasiAddrinfo::default();
     let mut sockaddrs = Vec::new();
     let mut sockbuffs = Vec::new();
@@ -329,4 +332,14 @@ pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
         r_addrs.push(addr);
     }
     Ok(r_addrs)
+}
+
+#[cfg(feature = "wasmedge_asyncify")]
+pub fn nslookup_v4(host: &str) -> std::io::Result<Vec<std::net::Ipv4Addr>> {
+    socket::lookup_ipv4(host, 10)
+}
+
+#[cfg(feature = "wasmedge_asyncify")]
+pub fn nslookup_v6(host: &str) -> std::io::Result<Vec<std::net::Ipv6Addr>> {
+    socket::lookup_ipv6(host, 10)
 }
