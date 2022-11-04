@@ -1,7 +1,7 @@
 [package]
 name = "wasmedge_wasi_socket"
 version = "0.4.2"
-authors = [ "Yi <yi@secondstate.io>" ]
+authors = ["Yi <yi@secondstate.io>"]
 edition = "2021"
 license = "Apache-2.0"
 description = "Rust API for the networking socket functions supported in the WasmEdge Runtime for WebAssembly."
@@ -22,3 +22,4 @@ default = ["wasmedge_0_10"]
 wasmedge_0_9 = []
 wasmedge_0_10 = []
 wasi_poll = []
+wasmedge_asyncify = []

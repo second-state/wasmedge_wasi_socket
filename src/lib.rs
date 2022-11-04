@@ -5,10 +5,9 @@ pub mod wasi_poll;
 #[cfg(not(feature = "wasi_poll"))]
 mod wasi_poll;
 pub use socket::WasiAddrinfo;
-pub use std::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr, ToSocketAddrs};
+pub use std::net::{IpAddr, Shutdown, SocketAddr, ToSocketAddrs};
 use std::{
     io::{self, Read, Write},
-    net::SocketAddrV4,
     os::wasi::prelude::{AsRawFd, FromRawFd, IntoRawFd},
 };
 
@@ -283,7 +282,11 @@ impl AsRawFd for UdpSocket {
     }
 }
 
+#[cfg(not(feature = "wasmedge_asyncify"))]
 pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
+    use std::net::Ipv4Addr;
+    use std::net::SocketAddrV4;
+
     let hints: WasiAddrinfo = WasiAddrinfo::default();
     let mut sockaddrs = Vec::new();
     let mut sockbuffs = Vec::new();
@@ -329,4 +332,48 @@ pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
         r_addrs.push(addr);
     }
     Ok(r_addrs)
+}
+
+#[cfg(feature = "wasmedge_asyncify")]
+pub fn nslookup_v4(host: &str) -> std::io::Result<Vec<std::net::Ipv4Addr>> {
+    socket::lookup_ipv4(host, 10)
+}
+
+#[cfg(feature = "wasmedge_asyncify")]
+pub fn nslookup_v6(host: &str) -> std::io::Result<Vec<std::net::Ipv6Addr>> {
+    socket::lookup_ipv6(host, 10)
+}
+
+#[cfg(feature = "wasmedge_asyncify")]
+pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
+    let port = match service {
+        "ssh" => 22,
+        "telnet" => 23,
+        "smtp" => 25,
+        "http" => 80,
+        "https" => 443,
+        _ => return Err(std::io::Error::from(std::io::ErrorKind::NotFound)),
+    };
+    let ipv4 = nslookup_v4(node).map(|ip_vec| {
+        ip_vec
+            .into_iter()
+            .map(|ip| SocketAddr::V4(std::net::SocketAddrV4::new(ip, port)))
+            .collect::<Vec<SocketAddr>>()
+    });
+    let ipv6 = nslookup_v6(node).map(|ip_vec| {
+        ip_vec
+            .into_iter()
+            .map(|ip| SocketAddr::V6(std::net::SocketAddrV6::new(ip, port, 0, 0)))
+            .collect::<Vec<SocketAddr>>()
+    });
+
+    match (ipv4, ipv6) {
+        (Ok(mut ipv4), Ok(ipv6)) => {
+            ipv4.extend(ipv6);
+            Ok(ipv4)
+        }
+        (Ok(ipv4), Err(_)) => Ok(ipv4),
+        (Err(_), Ok(ipv6)) => Ok(ipv6),
+        (Err(e), Err(_)) => Err(e),
+    }
 }
