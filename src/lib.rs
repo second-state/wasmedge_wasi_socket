@@ -352,7 +352,7 @@ pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
         "smtp" => 25,
         "http" => 80,
         "https" => 443,
-        _ => return Err(std::io::Error::from(std::io::ErrorKind::NotFound)),
+        _ => 0,
     };
     let ipv4 = nslookup_v4(node).map(|ip_vec| {
         ip_vec
