@@ -8,5 +8,5 @@ exclude = ["server.py"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wasmedge_http_req  = "0.9.0"
+http_req_wasi  = "0.10"
 wasmedge_wasi_socket = {path = "../.."}

@@ -1,4 +1,4 @@
-use wasmedge_http_req::request;
+use http_req::request;
 use wasmedge_wasi_socket::nslookup;
 
 fn main() -> std::io::Result<()> {
