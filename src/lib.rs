@@ -5,10 +5,10 @@ pub mod wasi_poll;
 #[cfg(not(feature = "wasi_poll"))]
 mod wasi_poll;
 pub use socket::WasiAddrinfo;
-pub use std::net::{IpAddr, Ipv4Addr, Shutdown, SocketAddr, ToSocketAddrs};
+pub use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use std::{
     io::{self, Read, Write},
-    net::SocketAddrV4,
+    net::{SocketAddrV4, SocketAddrV6},
     os::wasi::prelude::{AsRawFd, FromRawFd, IntoRawFd},
 };
 
@@ -329,4 +329,143 @@ pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
         r_addrs.push(addr);
     }
     Ok(r_addrs)
+}
+
+/*
+Implement ToScoketAddrs using nslookup, so that DNS can be resolved in wasi.
+*/
+pub trait ToSocketAddrs {
+    type Iter: Iterator<Item = SocketAddr>;
+
+    fn to_socket_addrs(&self) -> std::io::Result<Self::Iter>;
+}
+
+impl ToSocketAddrs for SocketAddr {
+    type Iter = std::option::IntoIter<SocketAddr>;
+    fn to_socket_addrs(&self) -> io::Result<std::option::IntoIter<SocketAddr>> {
+        Ok(Some(*self).into_iter())
+    }
+}
+
+impl ToSocketAddrs for SocketAddrV4 {
+    type Iter = std::option::IntoIter<SocketAddr>;
+    fn to_socket_addrs(&self) -> io::Result<std::option::IntoIter<SocketAddr>> {
+        SocketAddr::V4(*self).to_socket_addrs()
+    }
+}
+
+impl ToSocketAddrs for SocketAddrV6 {
+    type Iter = std::option::IntoIter<SocketAddr>;
+    fn to_socket_addrs(&self) -> io::Result<std::option::IntoIter<SocketAddr>> {
+        SocketAddr::V6(*self).to_socket_addrs()
+    }
+}
+
+impl ToSocketAddrs for (IpAddr, u16) {
+    type Iter = std::option::IntoIter<SocketAddr>;
+    fn to_socket_addrs(&self) -> io::Result<std::option::IntoIter<SocketAddr>> {
+        let (ip, port) = *self;
+        match ip {
+            IpAddr::V4(ref a) => (*a, port).to_socket_addrs(),
+            IpAddr::V6(ref a) => (*a, port).to_socket_addrs(),
+        }
+    }
+}
+
+impl ToSocketAddrs for (Ipv4Addr, u16) {
+    type Iter = std::option::IntoIter<SocketAddr>;
+    fn to_socket_addrs(&self) -> io::Result<std::option::IntoIter<SocketAddr>> {
+        let (ip, port) = *self;
+        SocketAddrV4::new(ip, port).to_socket_addrs()
+    }
+}
+
+impl ToSocketAddrs for (Ipv6Addr, u16) {
+    type Iter = std::option::IntoIter<SocketAddr>;
+    fn to_socket_addrs(&self) -> io::Result<std::option::IntoIter<SocketAddr>> {
+        let (ip, port) = *self;
+        SocketAddrV6::new(ip, port, 0, 0).to_socket_addrs()
+    }
+}
+
+impl ToSocketAddrs for (&str, u16) {
+    type Iter = std::vec::IntoIter<SocketAddr>;
+    fn to_socket_addrs(&self) -> io::Result<std::vec::IntoIter<SocketAddr>> {
+        let (host, port) = *self;
+
+        // try to parse the host as a regular IP address first
+        if let Ok(addr) = host.parse::<std::net::Ipv4Addr>() {
+            let addr = std::net::SocketAddrV4::new(addr, port);
+            return Ok(vec![SocketAddr::V4(addr)].into_iter());
+        }
+        if let Ok(addr) = host.parse::<std::net::Ipv6Addr>() {
+            let addr = std::net::SocketAddrV6::new(addr, port, 0, 0);
+            return Ok(vec![SocketAddr::V6(addr)].into_iter());
+        }
+        let v: Vec<_> = nslookup(host, "http")?
+            .into_iter()
+            .map(|mut a| {
+                a.set_port(port);
+                a
+            })
+            .collect();
+        Ok(v.into_iter())
+    }
+}
+
+impl ToSocketAddrs for (String, u16) {
+    type Iter = std::vec::IntoIter<SocketAddr>;
+    fn to_socket_addrs(&self) -> io::Result<std::vec::IntoIter<SocketAddr>> {
+        (&*self.0, self.1).to_socket_addrs()
+    }
+}
+
+// accepts strings like 'localhost:12345'
+impl ToSocketAddrs for str {
+    type Iter = std::vec::IntoIter<SocketAddr>;
+    fn to_socket_addrs(&self) -> io::Result<std::vec::IntoIter<SocketAddr>> {
+        // try to parse as a regular SocketAddr first
+        if let Ok(addr) = self.parse() {
+            return Ok(vec![addr].into_iter());
+        }
+
+        let host_and_port = self.split(":").collect::<Vec<&str>>();
+        if host_and_port.len() != 2 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "invalid socket address",
+            ));
+        }
+        let host = host_and_port[0];
+        let port = str::parse::<u16>(host_and_port[1]).map_err(|_e| {
+            std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid port value")
+        })?;
+        let mut addrs = nslookup(host, "http")?;
+        for addr in addrs.iter_mut() {
+            addr.set_port(port);
+        }
+        Ok(addrs.into_iter())
+    }
+}
+
+impl ToSocketAddrs for String {
+    type Iter = std::vec::IntoIter<SocketAddr>;
+    fn to_socket_addrs(&self) -> io::Result<std::vec::IntoIter<SocketAddr>> {
+        (&**self).to_socket_addrs()
+    }
+}
+
+impl<'a> ToSocketAddrs for &'a [SocketAddr] {
+    type Iter = std::iter::Cloned<std::slice::Iter<'a, SocketAddr>>;
+
+    fn to_socket_addrs(&self) -> io::Result<Self::Iter> {
+        Ok(self.iter().cloned())
+    }
+}
+
+impl<T: ToSocketAddrs + ?Sized> ToSocketAddrs for &T {
+    type Iter = T::Iter;
+    fn to_socket_addrs(&self) -> io::Result<T::Iter> {
+        (**self).to_socket_addrs()
+    }
 }
