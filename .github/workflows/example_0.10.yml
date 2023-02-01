@@ -77,3 +77,8 @@ jobs:
       run: |
         cargo build --target wasm32-wasi --example=get_addrinfo --release
         wasmedge target/wasm32-wasi/release/examples/get_addrinfo.wasm
+
+    - name: ToSocketAddrs Example
+      run: |
+        cargo build --target wasm32-wasi --example=socket_addr --release
+        wasmedge target/wasm32-wasi/release/examples/socket_addr.wasm
