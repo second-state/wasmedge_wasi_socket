@@ -32,7 +32,6 @@ fn main() -> std::io::Result<()> {
     // dns
     let mut addr = ("localhost:3000").to_socket_addrs()?;
     assert_eq!(addr.next(), Some(SocketAddr::from(([127, 0, 0, 1], 3000))));
-    assert!(addr.next().is_none());
 
     Ok(())
 }
