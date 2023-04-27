@@ -1,7 +1,7 @@
 [package]
 name = "wasmedge_wasi_socket"
 version = "0.4.3"
-authors = [ "Yi <yi@secondstate.io>" ]
+authors = ["Yi <yi@secondstate.io>"]
 edition = "2021"
 license = "Apache-2.0"
 description = "Rust API for the networking socket functions supported in the WasmEdge Runtime for WebAssembly."
@@ -15,10 +15,14 @@ name = "wasmedge_wasi_socket"
 path = "src/lib.rs"
 
 [dependencies]
+bytes = "1.4.0"
+dns-parser = "0.8.0"
 libc = "0.2.3"
+rand = "0.8.5"
 
 [features]
-default = ["wasmedge_0_10"]
+default = ["wasmedge_0_10", "built-in-dns"]
+built-in-dns = []
 wasmedge_0_9 = []
 wasmedge_0_10 = []
 wasi_poll = []
