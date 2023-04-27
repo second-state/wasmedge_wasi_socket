@@ -336,11 +336,20 @@ pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
 pub fn nslookup(node: &str, _service: &str) -> std::io::Result<Vec<SocketAddr>> {
     let dns_server = std::env::var("DNS_SERVER").unwrap_or("8.8.8.8:53".into());
     let mut conn = TcpStream::connect(dns_server)?;
-    Ok(resolve::<_, Ipv4Addr>(&mut conn, node)
+    if node == "localhost" {
+        return "127.0.0.1:0".to_socket_addrs().map(|v| v.collect());
+    }
+    let r = resolve::<_, Ipv4Addr>(&mut conn, node)
         .unwrap_or_default()
         .into_iter()
         .map(|addr| (addr, 0).into())
-        .collect::<Vec<SocketAddr>>())
+        .collect::<Vec<SocketAddr>>();
+    if r.is_empty() {
+        // __WASI_ERRNO_AINODATA
+        Err(std::io::Error::from_raw_os_error(83))
+    } else {
+        Ok(r)
+    }
 }
 
 pub trait ToQType: Sized {
