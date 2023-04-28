@@ -16,6 +16,18 @@ pub struct TcpStream {
     s: socket::Socket,
 }
 
+impl AsRef<socket::Socket> for TcpStream {
+    fn as_ref(&self) -> &socket::Socket {
+        &self.s
+    }
+}
+
+impl AsMut<socket::Socket> for TcpStream {
+    fn as_mut(&mut self) -> &mut socket::Socket {
+        &mut self.s
+    }
+}
+
 #[derive(Debug)]
 pub struct TcpListener {
     s: socket::Socket,
@@ -23,9 +35,33 @@ pub struct TcpListener {
     pub port: Option<u16>,
 }
 
+impl AsRef<socket::Socket> for TcpListener {
+    fn as_ref(&self) -> &socket::Socket {
+        &self.s
+    }
+}
+
+impl AsMut<socket::Socket> for TcpListener {
+    fn as_mut(&mut self) -> &mut socket::Socket {
+        &mut self.s
+    }
+}
+
 #[derive(Debug)]
 pub struct UdpSocket {
     s: socket::Socket,
+}
+
+impl AsRef<socket::Socket> for UdpSocket {
+    fn as_ref(&self) -> &socket::Socket {
+        &self.s
+    }
+}
+
+impl AsMut<socket::Socket> for UdpSocket {
+    fn as_mut(&mut self) -> &mut socket::Socket {
+        &mut self.s
+    }
 }
 
 impl TcpStream {

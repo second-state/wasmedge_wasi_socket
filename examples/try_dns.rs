@@ -4,7 +4,11 @@ fn main() {
     let mut code = 0;
 
     for name in std::env::args().skip(1) {
-        let mut conn = TcpStream::connect("8.8.8.8:53").unwrap();
+        println!("resolve {name}");
+        let mut conn = TcpStream::connect("127.0.0.1:8000").unwrap();
+        conn.as_ref()
+            .set_recv_timeout(Some(std::time::Duration::from_secs(3)))
+            .unwrap();
 
         match resolve::<_, Ipv4Addr>(&mut conn, &name) {
             Ok(address) => {

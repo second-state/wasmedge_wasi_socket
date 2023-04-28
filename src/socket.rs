@@ -1,4 +1,5 @@
 use std::io;
+use std::mem::MaybeUninit;
 use std::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::os::wasi::prelude::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 
@@ -237,6 +238,7 @@ pub enum SocketOptName {
     SoRcvtimeo = 11,
     SoSndtimeo = 12,
     SoAcceptconn = 13,
+    SoBindToDevice = 14,
 }
 
 macro_rules! syscall {
@@ -354,7 +356,34 @@ pub struct Socket {
     fd: RawFd,
 }
 
+use std::time::Duration;
 use wasi_sock::*;
+
+fn into_timeval(duration: Option<Duration>) -> libc::timeval {
+    match duration {
+        // https://github.com/rust-lang/libc/issues/1848
+        #[cfg_attr(target_env = "musl", allow(deprecated))]
+        Some(duration) => libc::timeval {
+            tv_sec: duration.as_secs().min(libc::time_t::max_value() as u64) as libc::time_t,
+            tv_usec: duration.subsec_micros() as libc::suseconds_t,
+        },
+        None => libc::timeval {
+            tv_sec: 0,
+            tv_usec: 0,
+        },
+    }
+}
+
+fn from_timeval(duration: libc::timeval) -> Option<Duration> {
+    if duration.tv_sec == 0 && duration.tv_usec == 0 {
+        None
+    } else {
+        let sec = duration.tv_sec as u64;
+        let nsec = (duration.tv_usec as u32) * 1000;
+        Some(Duration::new(sec, nsec))
+    }
+}
+
 impl Socket {
     pub fn new(addr_family: AddressFamily, sock_kind: SocketType) -> io::Result<Self> {
         unsafe {
@@ -364,6 +393,115 @@ impl Socket {
                 Ok(Socket { fd: fd as i32 })
             } else {
                 Err(io::Error::from_raw_os_error(res as i32))
+            }
+        }
+    }
+
+    pub fn device(&self) -> io::Result<Option<Vec<u8>>> {
+        let mut buf: [MaybeUninit<u8>; 0x10] = unsafe { MaybeUninit::uninit().assume_init() };
+        let mut len = buf.len() as u32;
+        let e = unsafe {
+            sock_getsockopt(
+                self.fd as u32,
+                SocketOptLevel::SolSocket as i32,
+                SocketOptName::SoBindToDevice as i32,
+                &mut buf as *mut _ as *mut i32,
+                &mut len,
+            )
+        };
+
+        if e == 0 {
+            if len == 0 {
+                Ok(None)
+            } else {
+                let buf = &buf[..len as usize - 1];
+                // TODO: use `MaybeUninit::slice_assume_init_ref` once stable.
+                Ok(Some(unsafe { &*(buf as *const [_] as *const [u8]) }.into()))
+            }
+        } else {
+            Err(io::Error::from_raw_os_error(e as i32))
+        }
+    }
+
+    pub fn bind_device(&self, interface: Option<&[u8]>) -> io::Result<()> {
+        let (value, len) = if let Some(interface) = interface {
+            (interface.as_ptr(), interface.len())
+        } else {
+            (std::ptr::null(), 0)
+        };
+
+        unsafe {
+            let e = sock_setsockopt(
+                self.fd as u32,
+                SocketOptLevel::SolSocket as u8 as i32,
+                SocketOptName::SoBindToDevice as u8 as i32,
+                value as *const i32,
+                len as u32,
+            );
+            if e == 0 {
+                Ok(())
+            } else {
+                Err(io::Error::from_raw_os_error(e as i32))
+            }
+        }
+    }
+
+    pub fn set_send_timeout(&self, duration: Option<Duration>) -> io::Result<()> {
+        self.setsockopt(
+            SocketOptLevel::SolSocket,
+            SocketOptName::SoSndtimeo,
+            into_timeval(duration),
+        )
+    }
+
+    pub fn get_send_timeout(&self) -> io::Result<Option<Duration>> {
+        unsafe {
+            let fd = self.fd;
+            let mut payload: MaybeUninit<libc::timeval> = MaybeUninit::uninit();
+            let mut len = std::mem::size_of::<libc::timeval>() as u32;
+
+            let e = sock_getsockopt(
+                fd as u32,
+                SocketOptLevel::SolSocket as i32,
+                SocketOptName::SoSndtimeo as i32,
+                payload.as_mut_ptr().cast(),
+                &mut len,
+            );
+
+            if e == 0 {
+                Ok(from_timeval(payload.assume_init()))
+            } else {
+                Err(io::Error::from_raw_os_error(e as i32))
+            }
+        }
+    }
+
+    pub fn set_recv_timeout(&self, duration: Option<std::time::Duration>) -> io::Result<()> {
+        self.setsockopt(
+            SocketOptLevel::SolSocket,
+            SocketOptName::SoRcvtimeo,
+            into_timeval(duration),
+        )
+    }
+
+    pub fn get_recv_timeout(&self) -> io::Result<Option<Duration>> {
+        unsafe {
+            let fd = self.fd;
+            let mut payload: MaybeUninit<libc::timeval> = MaybeUninit::uninit();
+            let mut len = std::mem::size_of::<libc::timeval>() as u32;
+
+            let e = sock_getsockopt(
+                fd as u32,
+                SocketOptLevel::SolSocket as i32,
+                SocketOptName::SoRcvtimeo as i32,
+                payload.as_mut_ptr().cast(),
+                &mut len,
+            );
+
+            if e == 0 {
+                Ok(from_timeval(payload.assume_init()))
+            } else {
+                Err(io::Error::from_raw_os_error(e as i32))
             }
         }
     }
