@@ -310,7 +310,6 @@ pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
         }
 
         let addr = match sockaddr.family {
-            #[cfg(not(feature = "wasmedge_0_9"))]
             socket::AddressFamily::Unspec => {
                 //unimplemented!("not support unspec")
                 continue;

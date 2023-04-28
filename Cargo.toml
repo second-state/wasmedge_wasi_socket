@@ -21,9 +21,7 @@ libc = "0.2.3"
 rand = "0.8.5"
 
 [features]
-default = ["wasmedge_0_10", "built-in-dns"]
+default = ["built-in-dns"]
 built-in-dns = []
-wasmedge_0_9 = []
-wasmedge_0_10 = []
 wasi_poll = []
 epoll = []
