@@ -4,7 +4,6 @@ pub mod socket;
 pub mod wasi_poll;
 #[cfg(not(feature = "wasi_poll"))]
 mod wasi_poll;
-pub use socket::WasiAddrinfo;
 pub use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use std::{
     io::{self, Read, Write},
@@ -285,6 +284,7 @@ impl AsRawFd for UdpSocket {
 
 #[cfg(not(feature = "built-in-dns"))]
 pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
+    use socket::WasiAddrinfo;
     let hints: WasiAddrinfo = WasiAddrinfo::default();
     let mut sockaddrs = Vec::new();
     let mut sockbuffs = Vec::new();

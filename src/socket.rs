@@ -105,6 +105,7 @@ impl Default for WasiSockaddr {
     }
 }
 
+#[cfg(not(feature = "built-in-dns"))]
 #[derive(Debug, Clone)]
 #[repr(C, packed(4))]
 pub struct WasiAddrinfo {
@@ -119,6 +120,7 @@ pub struct WasiAddrinfo {
     pub ai_next: *mut WasiAddrinfo,
 }
 
+#[cfg(not(feature = "built-in-dns"))]
 impl WasiAddrinfo {
     pub fn default() -> WasiAddrinfo {
         WasiAddrinfo {
@@ -146,6 +148,19 @@ impl WasiAddrinfo {
         sockbuff: &mut Vec<[u8; 26]>,
         ai_canonname: &mut Vec<String>,
     ) -> io::Result<Vec<WasiAddrinfo>> {
+        #[link(wasm_import_module = "wasi_snapshot_preview1")]
+        extern "C" {
+            pub fn sock_getaddrinfo(
+                node: *const u8,
+                node_len: u32,
+                server: *const u8,
+                server_len: u32,
+                hint: *const WasiAddrinfo,
+                res: *mut u32,
+                max_len: u32,
+                res_len: *mut u32,
+            ) -> u32;
+        }
         let mut node = node.to_string();
         let mut service = service.to_string();
 
@@ -265,7 +280,7 @@ fn fcntl_remove(fd: RawFd, get_cmd: i32, set_cmd: i32, flag: i32) -> io::Result<
 }
 
 mod wasi_sock {
-    use super::{IovecRead, IovecWrite, WasiAddress, WasiAddrinfo};
+    use super::{IovecRead, IovecWrite, WasiAddress};
 
     #[link(wasm_import_module = "wasi_snapshot_preview1")]
     extern "C" {
@@ -310,16 +325,6 @@ mod wasi_sock {
             send_len: *mut u32,
         ) -> u32;
         pub fn sock_shutdown(fd: u32, flags: u8) -> u32;
-        pub fn sock_getaddrinfo(
-            node: *const u8,
-            node_len: u32,
-            server: *const u8,
-            server_len: u32,
-            hint: *const WasiAddrinfo,
-            res: *mut u32,
-            max_len: u32,
-            res_len: *mut u32,
-        ) -> u32;
         pub fn sock_getpeeraddr(
             fd: u32,
             addr: *mut WasiAddress,
