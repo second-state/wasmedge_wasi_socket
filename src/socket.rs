@@ -300,6 +300,7 @@ mod wasi_sock {
             buf_len: u32,
             addr: *mut u8,
             flags: u16,
+            port: *mut u32,
             recv_len: *mut usize,
             oflags: *mut usize,
         ) -> u32;
@@ -586,11 +587,11 @@ impl Socket {
 
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         let flags = 0;
-        let addr_buf = [0; 16];
+        let addr_buf = [0; 128];
 
         let mut addr = WasiAddress {
             buf: addr_buf.as_ptr(),
-            size: 16,
+            size: 128,
         };
 
         let mut recv_buf = IovecRead {
@@ -600,6 +601,7 @@ impl Socket {
 
         let mut recv_len: usize = 0;
         let mut oflags: usize = 0;
+        let mut sin_port: u32 = 0;
         unsafe {
             let res = sock_recv_from(
                 self.as_raw_fd() as u32,
@@ -607,6 +609,7 @@ impl Socket {
                 1,
                 &mut addr as *mut WasiAddress as *mut u8,
                 flags,
+                &mut sin_port,
                 &mut recv_len,
                 &mut oflags,
             );
@@ -614,25 +617,18 @@ impl Socket {
                 let sin_family = {
                     let mut d = [0, 0];
                     d.clone_from_slice(&addr_buf[0..2]);
-                    u16::from_le_bytes(d)
+                    u16::from_le_bytes(d) as u8
                 };
-
-                let sin_port = {
-                    let mut d = [0, 0];
-                    d.clone_from_slice(&addr_buf[2..4]);
-                    u16::from_le_bytes(d)
-                };
-
-                let sin_addr = {
-                    if sin_family == 2 {
-                        let ip_addr =
-                            Ipv4Addr::new(addr_buf[4], addr_buf[5], addr_buf[6], addr_buf[7]);
-                        SocketAddr::V4(SocketAddrV4::new(ip_addr, sin_port))
-                    } else {
-                        // fixme
-                        let ip_addr = Ipv6Addr::from([0; 16]);
-                        SocketAddr::V6(SocketAddrV6::new(ip_addr, sin_port, 0, 0))
-                    }
+                let sin_addr = if sin_family == AddressFamily::Inet4 as u8 {
+                    let ip_addr = Ipv4Addr::new(addr_buf[2], addr_buf[3], addr_buf[4], addr_buf[5]);
+                    SocketAddr::V4(SocketAddrV4::new(ip_addr, sin_port as u16))
+                } else if sin_family == AddressFamily::Inet6 as u8 {
+                    let mut ipv6_addr = [0u8; 16];
+                    ipv6_addr.copy_from_slice(&addr_buf[2..18]);
+                    let ip_addr = Ipv6Addr::from(ipv6_addr);
+                    SocketAddr::V6(SocketAddrV6::new(ip_addr, sin_port as u16, 0, 0))
+                } else {
+                    unimplemented!("Address family not supported by protocol");
                 };
 
                 Ok((recv_len, sin_addr))

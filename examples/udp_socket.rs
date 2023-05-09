@@ -9,10 +9,10 @@ fn main() -> std::io::Result<()> {
     socket.send_to(b"hello", &addr).unwrap();
 
     let mut buf = [0; 128];
-    let (size, _) = socket.recv_from(&mut buf).unwrap();
+    let (size, addr) = socket.recv_from(&mut buf).unwrap();
 
     match std::str::from_utf8(&buf[..size]) {
-        Ok(s) => Ok(println!("{}", s)),
+        Ok(s) => Ok(println!("{} {}", s, addr)),
         Err(e) => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, e)),
     }
 }
