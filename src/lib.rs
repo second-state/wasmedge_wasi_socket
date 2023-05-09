@@ -371,8 +371,12 @@ pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
 pub fn nslookup(node: &str, _service: &str) -> std::io::Result<Vec<SocketAddr>> {
     let dns_server = std::env::var("DNS_SERVER").unwrap_or("8.8.8.8:53".into());
     let mut conn = TcpStream::connect(dns_server)?;
+    let timeout = std::time::Duration::from_secs(1);
+    let _ignore = conn.as_mut().set_send_timeout(Some(timeout));
+    let _ignore = conn.as_mut().set_recv_timeout(Some(timeout));
+
     if node == "localhost" {
-        return "127.0.0.1:0".to_socket_addrs().map(|v| v.collect());
+        return ("127.0.0.1", 0u16).to_socket_addrs().map(|v| v.collect());
     }
     let r = resolve::<_, Ipv4Addr>(&mut conn, node)
         .unwrap_or_default()
