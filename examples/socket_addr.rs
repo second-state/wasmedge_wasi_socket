@@ -2,12 +2,12 @@ use wasmedge_wasi_socket::{SocketAddr, ToSocketAddrs};
 
 fn main() -> std::io::Result<()> {
     // ip + port
-    let mut addr = ("127.0.0.1", 3000).to_socket_addrs()?;
+    let mut addr = ("127.0.0.1", 3000).to_socket_addrs().unwrap();
     assert_eq!(addr.next(), Some(SocketAddr::from(([127, 0, 0, 1], 3000))));
     assert!(addr.next().is_none());
 
     // ip
-    let mut addr = ("127.0.0.1:3000").to_socket_addrs()?;
+    let mut addr = ("127.0.0.1:3000").to_socket_addrs().unwrap();
     assert_eq!(addr.next(), Some(SocketAddr::from(([127, 0, 0, 1], 3000))));
     assert!(addr.next().is_none());
 
@@ -30,7 +30,7 @@ fn main() -> std::io::Result<()> {
     assert!("foo:443".to_socket_addrs().is_err());
 
     // dns
-    let mut addr = ("localhost:3000").to_socket_addrs()?;
+    let mut addr = ("localhost:3000").to_socket_addrs().unwrap();
     assert_eq!(addr.next(), Some(SocketAddr::from(([127, 0, 0, 1], 3000))));
 
     Ok(())

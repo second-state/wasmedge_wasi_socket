@@ -4,7 +4,6 @@ pub mod socket;
 pub mod wasi_poll;
 #[cfg(not(feature = "wasi_poll"))]
 mod wasi_poll;
-pub use socket::WasiAddrinfo;
 pub use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use std::{
     io::{self, Read, Write},
@@ -17,6 +16,18 @@ pub struct TcpStream {
     s: socket::Socket,
 }
 
+impl AsRef<socket::Socket> for TcpStream {
+    fn as_ref(&self) -> &socket::Socket {
+        &self.s
+    }
+}
+
+impl AsMut<socket::Socket> for TcpStream {
+    fn as_mut(&mut self) -> &mut socket::Socket {
+        &mut self.s
+    }
+}
+
 #[derive(Debug)]
 pub struct TcpListener {
     s: socket::Socket,
@@ -24,9 +35,33 @@ pub struct TcpListener {
     pub port: Option<u16>,
 }
 
+impl AsRef<socket::Socket> for TcpListener {
+    fn as_ref(&self) -> &socket::Socket {
+        &self.s
+    }
+}
+
+impl AsMut<socket::Socket> for TcpListener {
+    fn as_mut(&mut self) -> &mut socket::Socket {
+        &mut self.s
+    }
+}
+
 #[derive(Debug)]
 pub struct UdpSocket {
     s: socket::Socket,
+}
+
+impl AsRef<socket::Socket> for UdpSocket {
+    fn as_ref(&self) -> &socket::Socket {
+        &self.s
+    }
+}
+
+impl AsMut<socket::Socket> for UdpSocket {
+    fn as_mut(&mut self) -> &mut socket::Socket {
+        &mut self.s
+    }
 }
 
 impl TcpStream {
@@ -283,7 +318,9 @@ impl AsRawFd for UdpSocket {
     }
 }
 
+#[cfg(not(feature = "built-in-dns"))]
 pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
+    use socket::WasiAddrinfo;
     let hints: WasiAddrinfo = WasiAddrinfo::default();
     let mut sockaddrs = Vec::new();
     let mut sockbuffs = Vec::new();
@@ -309,7 +346,6 @@ pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
         }
 
         let addr = match sockaddr.family {
-            #[cfg(not(feature = "wasmedge_0_9"))]
             socket::AddressFamily::Unspec => {
                 //unimplemented!("not support unspec")
                 continue;
@@ -329,6 +365,110 @@ pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
         r_addrs.push(addr);
     }
     Ok(r_addrs)
+}
+
+#[cfg(feature = "built-in-dns")]
+pub fn nslookup(node: &str, _service: &str) -> std::io::Result<Vec<SocketAddr>> {
+    let dns_server = std::env::var("DNS_SERVER").unwrap_or("8.8.8.8:53".into());
+    let mut conn = TcpStream::connect(dns_server)?;
+    let timeout = std::time::Duration::from_secs(1);
+    let _ignore = conn.as_mut().set_send_timeout(Some(timeout));
+    let _ignore = conn.as_mut().set_recv_timeout(Some(timeout));
+
+    if node == "localhost" {
+        return ("127.0.0.1", 0u16).to_socket_addrs().map(|v| v.collect());
+    }
+    let r = resolve::<_, Ipv4Addr>(&mut conn, node)
+        .unwrap_or_default()
+        .into_iter()
+        .map(|addr| (addr, 0).into())
+        .collect::<Vec<SocketAddr>>();
+    if r.is_empty() {
+        // __WASI_ERRNO_AINODATA
+        Err(std::io::Error::from_raw_os_error(83))
+    } else {
+        Ok(r)
+    }
+}
+
+pub trait ToQType: Sized {
+    fn q_type() -> dns_parser::QueryType;
+
+    fn from_rr(rr: dns_parser::RData) -> Option<Self>;
+}
+
+impl ToQType for Ipv4Addr {
+    fn q_type() -> dns_parser::QueryType {
+        dns_parser::QueryType::A
+    }
+
+    fn from_rr(rr: dns_parser::RData) -> Option<Self> {
+        if let dns_parser::RData::A(ip) = rr {
+            Some(ip.0)
+        } else {
+            None
+        }
+    }
+}
+
+impl ToQType for Ipv6Addr {
+    fn q_type() -> dns_parser::QueryType {
+        dns_parser::QueryType::AAAA
+    }
+
+    fn from_rr(rr: dns_parser::RData) -> Option<Self> {
+        if let dns_parser::RData::AAAA(ip) = rr {
+            Some(ip.0)
+        } else {
+            None
+        }
+    }
+}
+
+pub fn resolve<S: Write + Read, T: ToQType>(
+    conn: &mut S,
+    name: &str,
+) -> Result<Vec<T>, Box<dyn std::error::Error>> {
+    use dns_parser::QueryClass;
+    use dns_parser::{Builder, Packet, ResponseCode};
+    let id = rand::random();
+    let mut builder = Builder::new_query(id, true);
+    builder.add_question(name, false, T::q_type(), QueryClass::IN);
+    let packet = builder.build().map_err(|_| "truncated packet")?;
+    let mut psize = (packet.len() as u16).to_be_bytes();
+
+    conn.write_all(&psize[..])?;
+    conn.write_all(&packet)?;
+
+    let n = conn.read(&mut psize)?;
+    if n < 2 {
+        return Err("Partial packet received".into());
+    }
+
+    let psize = u16::from_be_bytes(psize) as usize;
+    let mut buf = vec![0u8; psize];
+    let n = conn.read(&mut buf[0..psize])?;
+    if n != psize {
+        return Err("Partial packet received".into());
+    }
+
+    let pkt = Packet::parse(&buf)?;
+
+    if pkt.header.id != id {
+        return Err("Illegal id".into());
+    }
+
+    if pkt.header.response_code != ResponseCode::NoError {
+        return Err(pkt.header.response_code.into());
+    }
+
+    let mut address = vec![];
+    for ans in pkt.answers {
+        if let Some(addr) = T::from_rr(ans.data) {
+            address.push(addr);
+        }
+    }
+    Ok(address)
 }
 
 /*

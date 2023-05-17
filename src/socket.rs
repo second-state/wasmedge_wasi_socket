@@ -1,11 +1,11 @@
 use std::io;
+use std::mem::MaybeUninit;
 use std::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAddrV6};
 use std::os::wasi::prelude::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8, align(1))]
 pub enum AddressFamily {
-    #[cfg(not(feature = "wasmedge_0_9"))]
     Unspec,
     Inet4,
     Inet6,
@@ -17,14 +17,12 @@ impl From<&SocketAddr> for AddressFamily {
         match addr {
             SocketAddr::V4(_) => AddressFamily::Inet4,
             SocketAddr::V6(_) => AddressFamily::Inet6,
-            #[cfg(not(feature = "wasmedge_0_9"))]
             _ => AddressFamily::Unspec,
         }
     }
 }
 
 impl AddressFamily {
-    #[cfg(not(feature = "wasmedge_0_9"))]
     pub fn is_unspec(&self) -> bool {
         matches!(*self, AddressFamily::Unspec)
     }
@@ -41,7 +39,6 @@ impl AddressFamily {
 #[derive(Copy, Clone, Debug)]
 #[repr(u8, align(1))]
 pub enum SocketType {
-    #[cfg(not(feature = "wasmedge_0_9"))]
     Any,
     Datagram,
     Stream,
@@ -71,7 +68,6 @@ pub enum AiFlags {
 #[derive(Copy, Clone, Debug)]
 #[repr(u8, align(1))]
 pub enum AiProtocol {
-    #[cfg(not(feature = "wasmedge_0_9"))]
     IPProtoIP,
     IPProtoTCP,
     IPProtoUDP,
@@ -105,6 +101,7 @@ impl Default for WasiSockaddr {
     }
 }
 
+#[cfg(not(feature = "built-in-dns"))]
 #[derive(Debug, Clone)]
 #[repr(C, packed(4))]
 pub struct WasiAddrinfo {
@@ -119,6 +116,7 @@ pub struct WasiAddrinfo {
     pub ai_next: *mut WasiAddrinfo,
 }
 
+#[cfg(not(feature = "built-in-dns"))]
 impl WasiAddrinfo {
     pub fn default() -> WasiAddrinfo {
         WasiAddrinfo {
@@ -146,6 +144,19 @@ impl WasiAddrinfo {
         sockbuff: &mut Vec<[u8; 26]>,
         ai_canonname: &mut Vec<String>,
     ) -> io::Result<Vec<WasiAddrinfo>> {
+        #[link(wasm_import_module = "wasi_snapshot_preview1")]
+        extern "C" {
+            pub fn sock_getaddrinfo(
+                node: *const u8,
+                node_len: u32,
+                server: *const u8,
+                server_len: u32,
+                hint: *const WasiAddrinfo,
+                res: *mut u32,
+                max_len: u32,
+                res_len: *mut u32,
+            ) -> u32;
+        }
         let mut node = node.to_string();
         let mut service = service.to_string();
 
@@ -227,6 +238,7 @@ pub enum SocketOptName {
     SoRcvtimeo = 11,
     SoSndtimeo = 12,
     SoAcceptconn = 13,
+    SoBindToDevice = 14,
 }
 
 macro_rules! syscall {
@@ -265,7 +277,7 @@ fn fcntl_remove(fd: RawFd, get_cmd: i32, set_cmd: i32, flag: i32) -> io::Result<
 }
 
 mod wasi_sock {
-    use super::{IovecRead, IovecWrite, WasiAddress, WasiAddrinfo};
+    use super::{IovecRead, IovecWrite, WasiAddress};
 
     #[link(wasm_import_module = "wasi_snapshot_preview1")]
     extern "C" {
@@ -282,13 +294,24 @@ mod wasi_sock {
             recv_len: *mut usize,
             oflags: *mut usize,
         ) -> u32;
-        #[cfg(not(feature = "wasmedge_0_9"))]
+        #[cfg(not(feature = "wasmedge_0_12"))]
         pub fn sock_recv_from(
             fd: u32,
             buf: *mut IovecRead,
             buf_len: u32,
             addr: *mut u8,
             flags: u16,
+            recv_len: *mut usize,
+            oflags: *mut usize,
+        ) -> u32;
+        #[cfg(feature = "wasmedge_0_12")]
+        pub fn sock_recv_from(
+            fd: u32,
+            buf: *mut IovecRead,
+            buf_len: u32,
+            addr: *mut u8,
+            flags: u16,
+            port: *mut u32,
             recv_len: *mut usize,
             oflags: *mut usize,
         ) -> u32;
@@ -299,7 +322,6 @@ mod wasi_sock {
             flags: u16,
             send_len: *mut u32,
         ) -> u32;
-        #[cfg(not(feature = "wasmedge_0_9"))]
         pub fn sock_send_to(
             fd: u32,
             buf: *const IovecWrite,
@@ -310,16 +332,6 @@ mod wasi_sock {
             send_len: *mut u32,
         ) -> u32;
         pub fn sock_shutdown(fd: u32, flags: u8) -> u32;
-        pub fn sock_getaddrinfo(
-            node: *const u8,
-            node_len: u32,
-            server: *const u8,
-            server_len: u32,
-            hint: *const WasiAddrinfo,
-            res: *mut u32,
-            max_len: u32,
-            res_len: *mut u32,
-        ) -> u32;
         pub fn sock_getpeeraddr(
             fd: u32,
             addr: *mut WasiAddress,
@@ -356,7 +368,34 @@ pub struct Socket {
     fd: RawFd,
 }
 
+use std::time::Duration;
 use wasi_sock::*;
+
+fn into_timeval(duration: Option<Duration>) -> libc::timeval {
+    match duration {
+        // https://github.com/rust-lang/libc/issues/1848
+        #[cfg_attr(target_env = "musl", allow(deprecated))]
+        Some(duration) => libc::timeval {
+            tv_sec: duration.as_secs().min(libc::time_t::max_value() as u64) as libc::time_t,
+            tv_usec: duration.subsec_micros() as libc::suseconds_t,
+        },
+        None => libc::timeval {
+            tv_sec: 0,
+            tv_usec: 0,
+        },
+    }
+}
+
+fn from_timeval(duration: libc::timeval) -> Option<Duration> {
+    if duration.tv_sec == 0 && duration.tv_usec == 0 {
+        None
+    } else {
+        let sec = duration.tv_sec as u64;
+        let nsec = (duration.tv_usec as u32) * 1000;
+        Some(Duration::new(sec, nsec))
+    }
+}
+
 impl Socket {
     pub fn new(addr_family: AddressFamily, sock_kind: SocketType) -> io::Result<Self> {
         unsafe {
@@ -366,6 +405,115 @@ impl Socket {
                 Ok(Socket { fd: fd as i32 })
             } else {
                 Err(io::Error::from_raw_os_error(res as i32))
+            }
+        }
+    }
+
+    pub fn device(&self) -> io::Result<Option<Vec<u8>>> {
+        let mut buf: [MaybeUninit<u8>; 0x10] = unsafe { MaybeUninit::uninit().assume_init() };
+        let mut len = buf.len() as u32;
+        let e = unsafe {
+            sock_getsockopt(
+                self.fd as u32,
+                SocketOptLevel::SolSocket as i32,
+                SocketOptName::SoBindToDevice as i32,
+                &mut buf as *mut _ as *mut i32,
+                &mut len,
+            )
+        };
+
+        if e == 0 {
+            if len == 0 {
+                Ok(None)
+            } else {
+                let buf = &buf[..len as usize - 1];
+                // TODO: use `MaybeUninit::slice_assume_init_ref` once stable.
+                Ok(Some(unsafe { &*(buf as *const [_] as *const [u8]) }.into()))
+            }
+        } else {
+            Err(io::Error::from_raw_os_error(e as i32))
+        }
+    }
+
+    pub fn bind_device(&self, interface: Option<&[u8]>) -> io::Result<()> {
+        let (value, len) = if let Some(interface) = interface {
+            (interface.as_ptr(), interface.len())
+        } else {
+            (std::ptr::null(), 0)
+        };
+
+        unsafe {
+            let e = sock_setsockopt(
+                self.fd as u32,
+                SocketOptLevel::SolSocket as u8 as i32,
+                SocketOptName::SoBindToDevice as u8 as i32,
+                value as *const i32,
+                len as u32,
+            );
+            if e == 0 {
+                Ok(())
+            } else {
+                Err(io::Error::from_raw_os_error(e as i32))
+            }
+        }
+    }
+
+    pub fn set_send_timeout(&self, duration: Option<Duration>) -> io::Result<()> {
+        self.setsockopt(
+            SocketOptLevel::SolSocket,
+            SocketOptName::SoSndtimeo,
+            into_timeval(duration),
+        )
+    }
+
+    pub fn get_send_timeout(&self) -> io::Result<Option<Duration>> {
+        unsafe {
+            let fd = self.fd;
+            let mut payload: MaybeUninit<libc::timeval> = MaybeUninit::uninit();
+            let mut len = std::mem::size_of::<libc::timeval>() as u32;
+
+            let e = sock_getsockopt(
+                fd as u32,
+                SocketOptLevel::SolSocket as i32,
+                SocketOptName::SoSndtimeo as i32,
+                payload.as_mut_ptr().cast(),
+                &mut len,
+            );
+
+            if e == 0 {
+                Ok(from_timeval(payload.assume_init()))
+            } else {
+                Err(io::Error::from_raw_os_error(e as i32))
+            }
+        }
+    }
+
+    pub fn set_recv_timeout(&self, duration: Option<std::time::Duration>) -> io::Result<()> {
+        self.setsockopt(
+            SocketOptLevel::SolSocket,
+            SocketOptName::SoRcvtimeo,
+            into_timeval(duration),
+        )
+    }
+
+    pub fn get_recv_timeout(&self) -> io::Result<Option<Duration>> {
+        unsafe {
+            let fd = self.fd;
+            let mut payload: MaybeUninit<libc::timeval> = MaybeUninit::uninit();
+            let mut len = std::mem::size_of::<libc::timeval>() as u32;
+
+            let e = sock_getsockopt(
+                fd as u32,
+                SocketOptLevel::SolSocket as i32,
+                SocketOptName::SoRcvtimeo as i32,
+                payload.as_mut_ptr().cast(),
+                &mut len,
+            );
+
+            if e == 0 {
+                Ok(from_timeval(payload.assume_init()))
+            } else {
+                Err(io::Error::from_raw_os_error(e as i32))
             }
         }
     }
@@ -386,7 +534,6 @@ impl Socket {
         }
     }
 
-    #[cfg(not(feature = "wasmedge_0_9"))]
     pub fn send_to(&self, buf: &[u8], addr: SocketAddr) -> io::Result<usize> {
         let port = addr.port() as u32;
         let vaddr = match addr {
@@ -423,11 +570,6 @@ impl Socket {
         }
     }
 
-    #[cfg(feature = "wasmedge_0_9")]
-    pub fn send_to(&self, _buf: &[u8], _addr: SocketAddr) -> io::Result<usize> {
-        Err(io::Error::from(io::ErrorKind::Unsupported))
-    }
-
     pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
         let flags = 0;
         let mut recv_len: usize = 0;
@@ -454,7 +596,7 @@ impl Socket {
         }
     }
 
-    #[cfg(not(feature = "wasmedge_0_9"))]
+    #[cfg(not(feature = "wasmedge_0_12"))]
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         let flags = 0;
         let addr_buf = [0; 16];
@@ -513,9 +655,58 @@ impl Socket {
         }
     }
 
-    #[cfg(feature = "wasmedge_0_9")]
-    pub fn recv_from(&self, _buf: &[u8]) -> io::Result<(usize, SocketAddr)> {
-        Err(io::Error::from(io::ErrorKind::Unsupported))
+    #[cfg(feature = "wasmedge_0_12")]
+    pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
+        let flags = 0;
+        let addr_buf = [0; 128];
+
+        let mut addr = WasiAddress {
+            buf: addr_buf.as_ptr(),
+            size: 128,
+        };
+
+        let mut recv_buf = IovecRead {
+            buf: buf.as_mut_ptr(),
+            size: buf.len(),
+        };
+
+        let mut recv_len: usize = 0;
+        let mut oflags: usize = 0;
+        let mut sin_port: u32 = 0;
+        unsafe {
+            let res = sock_recv_from(
+                self.as_raw_fd() as u32,
+                &mut recv_buf,
+                1,
+                &mut addr as *mut WasiAddress as *mut u8,
+                flags,
+                &mut sin_port,
+                &mut recv_len,
+                &mut oflags,
+            );
+            if res == 0 {
+                let sin_family = {
+                    let mut d = [0, 0];
+                    d.clone_from_slice(&addr_buf[0..2]);
+                    u16::from_le_bytes(d) as u8
+                };
+                let sin_addr = if sin_family == AddressFamily::Inet4 as u8 {
+                    let ip_addr = Ipv4Addr::new(addr_buf[2], addr_buf[3], addr_buf[4], addr_buf[5]);
+                    SocketAddr::V4(SocketAddrV4::new(ip_addr, sin_port as u16))
+                } else if sin_family == AddressFamily::Inet6 as u8 {
+                    let mut ipv6_addr = [0u8; 16];
+                    ipv6_addr.copy_from_slice(&addr_buf[2..18]);
+                    let ip_addr = Ipv6Addr::from(ipv6_addr);
+                    SocketAddr::V6(SocketAddrV6::new(ip_addr, sin_port as u16, 0, 0))
+                } else {
+                    unimplemented!("Address family not supported by protocol");
+                };
+
+                Ok((recv_len, sin_addr))
+            } else {
+                Err(io::Error::from_raw_os_error(res as i32))
+            }
+        }
     }
 
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
