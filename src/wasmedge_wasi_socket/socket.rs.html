@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/socket.rs`."><title>socket.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-505eba68f310f6bf.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-f501212b8b071243.css"><link rel="stylesheet" disabled href="../../static.files/dark-e92fc12c34ff89d3.css"><link rel="stylesheet" disabled href="../../static.files/ayu-c8c85693c8a4f9db.css"><script id="default-settings" ></script><script src="../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-364b95f387bc3166.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../wasmedge_wasi_socket/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src/socket.rs`."><title>socket.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-f3501f0f5ae15dfb.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="wasmedge_wasi_socket" data-themes="" data-resource-suffix="" data-rustdoc-version="1.71.0-nightly (e77366b57 2023-05-16)" data-search-js="search-4926e5fc22a5646a.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-6f6ffb5395b17c6e.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ></div><script src="../../static.files/storage-62ce34ea385b278a.js"></script><script defer src="../../static.files/source-script-11255107d0a65077.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-f0540c1d82cde29b.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../wasmedge_wasi_socket/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -759,15 +759,206 @@
 <a href="#759" id="759">759</a>
 <a href="#760" id="760">760</a>
 <a href="#761" id="761">761</a>
-</pre><pre class="rust"><code><span class="kw">use </span>std::io;
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
+<a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::io;
+<span class="kw">use </span>std::mem::MaybeUninit;
 <span class="kw">use </span>std::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAddrV6};
 <span class="kw">use </span>std::os::wasi::prelude::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 
 <span class="attr">#[derive(Copy, Clone, Debug)]
 #[repr(u8, align(<span class="number">1</span>))]
 </span><span class="kw">pub enum </span>AddressFamily {
-    <span class="attr">#[cfg(not(feature = <span class="string">&quot;wasmedge_0_9&quot;</span>))]
-    </span>Unspec,
+    Unspec,
     Inet4,
     Inet6,
 }
@@ -778,15 +969,13 @@
         <span class="kw">match </span>addr {
             SocketAddr::V4(<span class="kw">_</span>) =&gt; AddressFamily::Inet4,
             SocketAddr::V6(<span class="kw">_</span>) =&gt; AddressFamily::Inet6,
-            <span class="attr">#[cfg(not(feature = <span class="string">&quot;wasmedge_0_9&quot;</span>))]
-            </span><span class="kw">_ </span>=&gt; AddressFamily::Unspec,
+            <span class="kw">_ </span>=&gt; AddressFamily::Unspec,
         }
     }
 }
 
 <span class="kw">impl </span>AddressFamily {
-    <span class="attr">#[cfg(not(feature = <span class="string">&quot;wasmedge_0_9&quot;</span>))]
-    </span><span class="kw">pub fn </span>is_unspec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+    <span class="kw">pub fn </span>is_unspec(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="macro">matches!</span>(<span class="kw-2">*</span><span class="self">self</span>, AddressFamily::Unspec)
     }
 
@@ -802,8 +991,7 @@
 <span class="attr">#[derive(Copy, Clone, Debug)]
 #[repr(u8, align(<span class="number">1</span>))]
 </span><span class="kw">pub enum </span>SocketType {
-    <span class="attr">#[cfg(not(feature = <span class="string">&quot;wasmedge_0_9&quot;</span>))]
-    </span>Any,
+    Any,
     Datagram,
     Stream,
 }
@@ -832,8 +1020,7 @@
 <span class="attr">#[derive(Copy, Clone, Debug)]
 #[repr(u8, align(<span class="number">1</span>))]
 </span><span class="kw">pub enum </span>AiProtocol {
-    <span class="attr">#[cfg(not(feature = <span class="string">&quot;wasmedge_0_9&quot;</span>))]
-    </span>IPProtoIP,
+    IPProtoIP,
     IPProtoTCP,
     IPProtoUDP,
 }
@@ -866,7 +1053,8 @@
     }
 }
 
-<span class="attr">#[derive(Debug, Clone)]
+<span class="attr">#[cfg(not(feature = <span class="string">&quot;built-in-dns&quot;</span>))]
+#[derive(Debug, Clone)]
 #[repr(C, packed(<span class="number">4</span>))]
 </span><span class="kw">pub struct </span>WasiAddrinfo {
     <span class="kw">pub </span>ai_flags: AiFlags,
@@ -880,7 +1068,8 @@
     <span class="kw">pub </span>ai_next: <span class="kw-2">*mut </span>WasiAddrinfo,
 }
 
-<span class="kw">impl </span>WasiAddrinfo {
+<span class="attr">#[cfg(not(feature = <span class="string">&quot;built-in-dns&quot;</span>))]
+</span><span class="kw">impl </span>WasiAddrinfo {
     <span class="kw">pub fn </span>default() -&gt; WasiAddrinfo {
         WasiAddrinfo {
             ai_flags: AiFlags::AiPassive,
@@ -907,6 +1096,19 @@
         sockbuff: <span class="kw-2">&amp;mut </span>Vec&lt;[u8; <span class="number">26</span>]&gt;,
         ai_canonname: <span class="kw-2">&amp;mut </span>Vec&lt;String&gt;,
     ) -&gt; io::Result&lt;Vec&lt;WasiAddrinfo&gt;&gt; {
+        <span class="attr">#[link(wasm_import_module = <span class="string">&quot;wasi_snapshot_preview1&quot;</span>)]
+        </span><span class="kw">extern </span><span class="string">&quot;C&quot; </span>{
+            <span class="kw">pub fn </span>sock_getaddrinfo(
+                node: <span class="kw-2">*const </span>u8,
+                node_len: u32,
+                server: <span class="kw-2">*const </span>u8,
+                server_len: u32,
+                hint: <span class="kw-2">*const </span>WasiAddrinfo,
+                res: <span class="kw-2">*mut </span>u32,
+                max_len: u32,
+                res_len: <span class="kw-2">*mut </span>u32,
+            ) -&gt; u32;
+        }
         <span class="kw">let </span><span class="kw-2">mut </span>node = node.to_string();
         <span class="kw">let </span><span class="kw-2">mut </span>service = service.to_string();
 
@@ -988,6 +1190,7 @@
     SoRcvtimeo = <span class="number">11</span>,
     SoSndtimeo = <span class="number">12</span>,
     SoAcceptconn = <span class="number">13</span>,
+    SoBindToDevice = <span class="number">14</span>,
 }
 
 <span class="macro">macro_rules! </span>syscall {
@@ -1026,7 +1229,7 @@
 }
 
 <span class="kw">mod </span>wasi_sock {
-    <span class="kw">use super</span>::{IovecRead, IovecWrite, WasiAddress, WasiAddrinfo};
+    <span class="kw">use super</span>::{IovecRead, IovecWrite, WasiAddress};
 
     <span class="attr">#[link(wasm_import_module = <span class="string">&quot;wasi_snapshot_preview1&quot;</span>)]
     </span><span class="kw">extern </span><span class="string">&quot;C&quot; </span>{
@@ -1043,13 +1246,24 @@
             recv_len: <span class="kw-2">*mut </span>usize,
             oflags: <span class="kw-2">*mut </span>usize,
         ) -&gt; u32;
-        <span class="attr">#[cfg(not(feature = <span class="string">&quot;wasmedge_0_9&quot;</span>))]
+        <span class="attr">#[cfg(not(feature = <span class="string">&quot;wasmedge_0_12&quot;</span>))]
         </span><span class="kw">pub fn </span>sock_recv_from(
             fd: u32,
             buf: <span class="kw-2">*mut </span>IovecRead,
             buf_len: u32,
             addr: <span class="kw-2">*mut </span>u8,
             flags: u16,
+            recv_len: <span class="kw-2">*mut </span>usize,
+            oflags: <span class="kw-2">*mut </span>usize,
+        ) -&gt; u32;
+        <span class="attr">#[cfg(feature = <span class="string">&quot;wasmedge_0_12&quot;</span>)]
+        </span><span class="kw">pub fn </span>sock_recv_from(
+            fd: u32,
+            buf: <span class="kw-2">*mut </span>IovecRead,
+            buf_len: u32,
+            addr: <span class="kw-2">*mut </span>u8,
+            flags: u16,
+            port: <span class="kw-2">*mut </span>u32,
             recv_len: <span class="kw-2">*mut </span>usize,
             oflags: <span class="kw-2">*mut </span>usize,
         ) -&gt; u32;
@@ -1060,8 +1274,7 @@
             flags: u16,
             send_len: <span class="kw-2">*mut </span>u32,
         ) -&gt; u32;
-        <span class="attr">#[cfg(not(feature = <span class="string">&quot;wasmedge_0_9&quot;</span>))]
-        </span><span class="kw">pub fn </span>sock_send_to(
+        <span class="kw">pub fn </span>sock_send_to(
             fd: u32,
             buf: <span class="kw-2">*const </span>IovecWrite,
             buf_len: u32,
@@ -1071,16 +1284,6 @@
             send_len: <span class="kw-2">*mut </span>u32,
         ) -&gt; u32;
         <span class="kw">pub fn </span>sock_shutdown(fd: u32, flags: u8) -&gt; u32;
-        <span class="kw">pub fn </span>sock_getaddrinfo(
-            node: <span class="kw-2">*const </span>u8,
-            node_len: u32,
-            server: <span class="kw-2">*const </span>u8,
-            server_len: u32,
-            hint: <span class="kw-2">*const </span>WasiAddrinfo,
-            res: <span class="kw-2">*mut </span>u32,
-            max_len: u32,
-            res_len: <span class="kw-2">*mut </span>u32,
-        ) -&gt; u32;
         <span class="kw">pub fn </span>sock_getpeeraddr(
             fd: u32,
             addr: <span class="kw-2">*mut </span>WasiAddress,
@@ -1117,7 +1320,34 @@
     fd: RawFd,
 }
 
+<span class="kw">use </span>std::time::Duration;
 <span class="kw">use </span>wasi_sock::<span class="kw-2">*</span>;
+
+<span class="kw">fn </span>into_timeval(duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;) -&gt; libc::timeval {
+    <span class="kw">match </span>duration {
+        <span class="comment">// https://github.com/rust-lang/libc/issues/1848
+        </span><span class="attr">#[cfg_attr(target_env = <span class="string">&quot;musl&quot;</span>, allow(deprecated))]
+        </span><span class="prelude-val">Some</span>(duration) =&gt; libc::timeval {
+            tv_sec: duration.as_secs().min(libc::time_t::max_value() <span class="kw">as </span>u64) <span class="kw">as </span>libc::time_t,
+            tv_usec: duration.subsec_micros() <span class="kw">as </span>libc::suseconds_t,
+        },
+        <span class="prelude-val">None </span>=&gt; libc::timeval {
+            tv_sec: <span class="number">0</span>,
+            tv_usec: <span class="number">0</span>,
+        },
+    }
+}
+
+<span class="kw">fn </span>from_timeval(duration: libc::timeval) -&gt; <span class="prelude-ty">Option</span>&lt;Duration&gt; {
+    <span class="kw">if </span>duration.tv_sec == <span class="number">0 </span>&amp;&amp; duration.tv_usec == <span class="number">0 </span>{
+        <span class="prelude-val">None
+    </span>} <span class="kw">else </span>{
+        <span class="kw">let </span>sec = duration.tv_sec <span class="kw">as </span>u64;
+        <span class="kw">let </span>nsec = (duration.tv_usec <span class="kw">as </span>u32) * <span class="number">1000</span>;
+        <span class="prelude-val">Some</span>(Duration::new(sec, nsec))
+    }
+}
+
 <span class="kw">impl </span>Socket {
     <span class="kw">pub fn </span>new(addr_family: AddressFamily, sock_kind: SocketType) -&gt; io::Result&lt;<span class="self">Self</span>&gt; {
         <span class="kw">unsafe </span>{
@@ -1127,6 +1357,115 @@
                 <span class="prelude-val">Ok</span>(Socket { fd: fd <span class="kw">as </span>i32 })
             } <span class="kw">else </span>{
                 <span class="prelude-val">Err</span>(io::Error::from_raw_os_error(res <span class="kw">as </span>i32))
+            }
+        }
+    }
+
+    <span class="kw">pub fn </span>device(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; io::Result&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>buf: [MaybeUninit&lt;u8&gt;; <span class="number">0x10</span>] = <span class="kw">unsafe </span>{ MaybeUninit::uninit().assume_init() };
+        <span class="kw">let </span><span class="kw-2">mut </span>len = buf.len() <span class="kw">as </span>u32;
+        <span class="kw">let </span>e = <span class="kw">unsafe </span>{
+            sock_getsockopt(
+                <span class="self">self</span>.fd <span class="kw">as </span>u32,
+                SocketOptLevel::SolSocket <span class="kw">as </span>i32,
+                SocketOptName::SoBindToDevice <span class="kw">as </span>i32,
+                <span class="kw-2">&amp;mut </span>buf <span class="kw">as </span><span class="kw-2">*mut </span><span class="kw">_ as </span><span class="kw-2">*mut </span>i32,
+                <span class="kw-2">&amp;mut </span>len,
+            )
+        };
+
+        <span class="kw">if </span>e == <span class="number">0 </span>{
+            <span class="kw">if </span>len == <span class="number">0 </span>{
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
+            } <span class="kw">else </span>{
+                <span class="kw">let </span>buf = <span class="kw-2">&amp;</span>buf[..len <span class="kw">as </span>usize - <span class="number">1</span>];
+                <span class="comment">// TODO: use `MaybeUninit::slice_assume_init_ref` once stable.
+                </span><span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="kw">unsafe </span>{ <span class="kw-2">&amp;*</span>(buf <span class="kw">as </span><span class="kw-2">*const </span>[<span class="kw">_</span>] <span class="kw">as </span><span class="kw-2">*const </span>[u8]) }.into()))
+            }
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(io::Error::from_raw_os_error(e <span class="kw">as </span>i32))
+        }
+    }
+
+    <span class="kw">pub fn </span>bind_device(<span class="kw-2">&amp;</span><span class="self">self</span>, interface: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[u8]&gt;) -&gt; io::Result&lt;()&gt; {
+        <span class="kw">let </span>(value, len) = <span class="kw">if let </span><span class="prelude-val">Some</span>(interface) = interface {
+            (interface.as_ptr(), interface.len())
+        } <span class="kw">else </span>{
+            (std::ptr::null(), <span class="number">0</span>)
+        };
+
+        <span class="kw">unsafe </span>{
+            <span class="kw">let </span>e = sock_setsockopt(
+                <span class="self">self</span>.fd <span class="kw">as </span>u32,
+                SocketOptLevel::SolSocket <span class="kw">as </span>u8 <span class="kw">as </span>i32,
+                SocketOptName::SoBindToDevice <span class="kw">as </span>u8 <span class="kw">as </span>i32,
+                value <span class="kw">as </span><span class="kw-2">*const </span>i32,
+                len <span class="kw">as </span>u32,
+            );
+            <span class="kw">if </span>e == <span class="number">0 </span>{
+                <span class="prelude-val">Ok</span>(())
+            } <span class="kw">else </span>{
+                <span class="prelude-val">Err</span>(io::Error::from_raw_os_error(e <span class="kw">as </span>i32))
+            }
+        }
+    }
+
+    <span class="kw">pub fn </span>set_send_timeout(<span class="kw-2">&amp;</span><span class="self">self</span>, duration: <span class="prelude-ty">Option</span>&lt;Duration&gt;) -&gt; io::Result&lt;()&gt; {
+        <span class="self">self</span>.setsockopt(
+            SocketOptLevel::SolSocket,
+            SocketOptName::SoSndtimeo,
+            into_timeval(duration),
+        )
+    }
+
+    <span class="kw">pub fn </span>get_send_timeout(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; io::Result&lt;<span class="prelude-ty">Option</span>&lt;Duration&gt;&gt; {
+        <span class="kw">unsafe </span>{
+            <span class="kw">let </span>fd = <span class="self">self</span>.fd;
+            <span class="kw">let </span><span class="kw-2">mut </span>payload: MaybeUninit&lt;libc::timeval&gt; = MaybeUninit::uninit();
+            <span class="kw">let </span><span class="kw-2">mut </span>len = std::mem::size_of::&lt;libc::timeval&gt;() <span class="kw">as </span>u32;
+
+            <span class="kw">let </span>e = sock_getsockopt(
+                fd <span class="kw">as </span>u32,
+                SocketOptLevel::SolSocket <span class="kw">as </span>i32,
+                SocketOptName::SoSndtimeo <span class="kw">as </span>i32,
+                payload.as_mut_ptr().cast(),
+                <span class="kw-2">&amp;mut </span>len,
+            );
+
+            <span class="kw">if </span>e == <span class="number">0 </span>{
+                <span class="prelude-val">Ok</span>(from_timeval(payload.assume_init()))
+            } <span class="kw">else </span>{
+                <span class="prelude-val">Err</span>(io::Error::from_raw_os_error(e <span class="kw">as </span>i32))
+            }
+        }
+    }
+
+    <span class="kw">pub fn </span>set_recv_timeout(<span class="kw-2">&amp;</span><span class="self">self</span>, duration: <span class="prelude-ty">Option</span>&lt;std::time::Duration&gt;) -&gt; io::Result&lt;()&gt; {
+        <span class="self">self</span>.setsockopt(
+            SocketOptLevel::SolSocket,
+            SocketOptName::SoRcvtimeo,
+            into_timeval(duration),
+        )
+    }
+
+    <span class="kw">pub fn </span>get_recv_timeout(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; io::Result&lt;<span class="prelude-ty">Option</span>&lt;Duration&gt;&gt; {
+        <span class="kw">unsafe </span>{
+            <span class="kw">let </span>fd = <span class="self">self</span>.fd;
+            <span class="kw">let </span><span class="kw-2">mut </span>payload: MaybeUninit&lt;libc::timeval&gt; = MaybeUninit::uninit();
+            <span class="kw">let </span><span class="kw-2">mut </span>len = std::mem::size_of::&lt;libc::timeval&gt;() <span class="kw">as </span>u32;
+
+            <span class="kw">let </span>e = sock_getsockopt(
+                fd <span class="kw">as </span>u32,
+                SocketOptLevel::SolSocket <span class="kw">as </span>i32,
+                SocketOptName::SoRcvtimeo <span class="kw">as </span>i32,
+                payload.as_mut_ptr().cast(),
+                <span class="kw-2">&amp;mut </span>len,
+            );
+
+            <span class="kw">if </span>e == <span class="number">0 </span>{
+                <span class="prelude-val">Ok</span>(from_timeval(payload.assume_init()))
+            } <span class="kw">else </span>{
+                <span class="prelude-val">Err</span>(io::Error::from_raw_os_error(e <span class="kw">as </span>i32))
             }
         }
     }
@@ -1147,8 +1486,7 @@
         }
     }
 
-    <span class="attr">#[cfg(not(feature = <span class="string">&quot;wasmedge_0_9&quot;</span>))]
-    </span><span class="kw">pub fn </span>send_to(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8], addr: SocketAddr) -&gt; io::Result&lt;usize&gt; {
+    <span class="kw">pub fn </span>send_to(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;</span>[u8], addr: SocketAddr) -&gt; io::Result&lt;usize&gt; {
         <span class="kw">let </span>port = addr.port() <span class="kw">as </span>u32;
         <span class="kw">let </span>vaddr = <span class="kw">match </span>addr {
             SocketAddr::V4(ipv4) =&gt; ipv4.ip().octets().to_vec(),
@@ -1184,11 +1522,6 @@
         }
     }
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wasmedge_0_9&quot;</span>)]
-    </span><span class="kw">pub fn </span>send_to(<span class="kw-2">&amp;</span><span class="self">self</span>, _buf: <span class="kw-2">&amp;</span>[u8], _addr: SocketAddr) -&gt; io::Result&lt;usize&gt; {
-        <span class="prelude-val">Err</span>(io::Error::from(io::ErrorKind::Unsupported))
-    }
-
     <span class="kw">pub fn </span>recv(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8]) -&gt; io::Result&lt;usize&gt; {
         <span class="kw">let </span>flags = <span class="number">0</span>;
         <span class="kw">let </span><span class="kw-2">mut </span>recv_len: usize = <span class="number">0</span>;
@@ -1215,7 +1548,7 @@
         }
     }
 
-    <span class="attr">#[cfg(not(feature = <span class="string">&quot;wasmedge_0_9&quot;</span>))]
+    <span class="attr">#[cfg(not(feature = <span class="string">&quot;wasmedge_0_12&quot;</span>))]
     </span><span class="kw">pub fn </span>recv_from(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8]) -&gt; io::Result&lt;(usize, SocketAddr)&gt; {
         <span class="kw">let </span>flags = <span class="number">0</span>;
         <span class="kw">let </span>addr_buf = [<span class="number">0</span>; <span class="number">16</span>];
@@ -1274,9 +1607,58 @@
         }
     }
 
-    <span class="attr">#[cfg(feature = <span class="string">&quot;wasmedge_0_9&quot;</span>)]
-    </span><span class="kw">pub fn </span>recv_from(<span class="kw-2">&amp;</span><span class="self">self</span>, _buf: <span class="kw-2">&amp;</span>[u8]) -&gt; io::Result&lt;(usize, SocketAddr)&gt; {
-        <span class="prelude-val">Err</span>(io::Error::from(io::ErrorKind::Unsupported))
+    <span class="attr">#[cfg(feature = <span class="string">&quot;wasmedge_0_12&quot;</span>)]
+    </span><span class="kw">pub fn </span>recv_from(<span class="kw-2">&amp;</span><span class="self">self</span>, buf: <span class="kw-2">&amp;mut </span>[u8]) -&gt; io::Result&lt;(usize, SocketAddr)&gt; {
+        <span class="kw">let </span>flags = <span class="number">0</span>;
+        <span class="kw">let </span>addr_buf = [<span class="number">0</span>; <span class="number">128</span>];
+
+        <span class="kw">let </span><span class="kw-2">mut </span>addr = WasiAddress {
+            buf: addr_buf.as_ptr(),
+            size: <span class="number">128</span>,
+        };
+
+        <span class="kw">let </span><span class="kw-2">mut </span>recv_buf = IovecRead {
+            buf: buf.as_mut_ptr(),
+            size: buf.len(),
+        };
+
+        <span class="kw">let </span><span class="kw-2">mut </span>recv_len: usize = <span class="number">0</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>oflags: usize = <span class="number">0</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>sin_port: u32 = <span class="number">0</span>;
+        <span class="kw">unsafe </span>{
+            <span class="kw">let </span>res = sock_recv_from(
+                <span class="self">self</span>.as_raw_fd() <span class="kw">as </span>u32,
+                <span class="kw-2">&amp;mut </span>recv_buf,
+                <span class="number">1</span>,
+                <span class="kw-2">&amp;mut </span>addr <span class="kw">as </span><span class="kw-2">*mut </span>WasiAddress <span class="kw">as </span><span class="kw-2">*mut </span>u8,
+                flags,
+                <span class="kw-2">&amp;mut </span>sin_port,
+                <span class="kw-2">&amp;mut </span>recv_len,
+                <span class="kw-2">&amp;mut </span>oflags,
+            );
+            <span class="kw">if </span>res == <span class="number">0 </span>{
+                <span class="kw">let </span>sin_family = {
+                    <span class="kw">let </span><span class="kw-2">mut </span>d = [<span class="number">0</span>, <span class="number">0</span>];
+                    d.clone_from_slice(<span class="kw-2">&amp;</span>addr_buf[<span class="number">0</span>..<span class="number">2</span>]);
+                    u16::from_le_bytes(d) <span class="kw">as </span>u8
+                };
+                <span class="kw">let </span>sin_addr = <span class="kw">if </span>sin_family == AddressFamily::Inet4 <span class="kw">as </span>u8 {
+                    <span class="kw">let </span>ip_addr = Ipv4Addr::new(addr_buf[<span class="number">2</span>], addr_buf[<span class="number">3</span>], addr_buf[<span class="number">4</span>], addr_buf[<span class="number">5</span>]);
+                    SocketAddr::V4(SocketAddrV4::new(ip_addr, sin_port <span class="kw">as </span>u16))
+                } <span class="kw">else if </span>sin_family == AddressFamily::Inet6 <span class="kw">as </span>u8 {
+                    <span class="kw">let </span><span class="kw-2">mut </span>ipv6_addr = [<span class="number">0u8</span>; <span class="number">16</span>];
+                    ipv6_addr.copy_from_slice(<span class="kw-2">&amp;</span>addr_buf[<span class="number">2</span>..<span class="number">18</span>]);
+                    <span class="kw">let </span>ip_addr = Ipv6Addr::from(ipv6_addr);
+                    SocketAddr::V6(SocketAddrV6::new(ip_addr, sin_port <span class="kw">as </span>u16, <span class="number">0</span>, <span class="number">0</span>))
+                } <span class="kw">else </span>{
+                    <span class="macro">unimplemented!</span>(<span class="string">&quot;Address family not supported by protocol&quot;</span>);
+                };
+
+                <span class="prelude-val">Ok</span>((recv_len, sin_addr))
+            } <span class="kw">else </span>{
+                <span class="prelude-val">Err</span>(io::Error::from_raw_os_error(res <span class="kw">as </span>i32))
+            }
+        }
     }
 
     <span class="kw">pub fn </span>set_nonblocking(<span class="kw-2">&amp;</span><span class="self">self</span>, nonblocking: bool) -&gt; io::Result&lt;()&gt; {
@@ -1520,5 +1902,4 @@
         Socket { fd }
     }
 }
-</code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="wasmedge_wasi_socket" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (f3126500f 2023-02-02)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
+</code></pre></div></section></main></body></html>
