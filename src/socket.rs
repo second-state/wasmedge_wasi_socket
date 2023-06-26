@@ -816,10 +816,10 @@ impl Socket {
             if res != 0 {
                 Err(io::Error::from_raw_os_error(res as i32))
             } else {
-                if addr_type == 4 {
+                if addr_type == AddressFamily::Inet4 as u8 as u32 {
                     let ip_addr = Ipv4Addr::new(addr_buf[0], addr_buf[1], addr_buf[2], addr_buf[3]);
                     Ok(SocketAddr::V4(SocketAddrV4::new(ip_addr, port as u16)))
-                } else if addr_type == 6 {
+                } else if addr_type == AddressFamily::Inet6 as u8 as u32 {
                     let ip_addr = Ipv6Addr::from(addr_buf);
                     Ok(SocketAddr::V6(SocketAddrV6::new(
                         ip_addr,
@@ -848,10 +848,10 @@ impl Socket {
             if res != 0 {
                 Err(io::Error::from_raw_os_error(res as i32))
             } else {
-                if addr_type == 4 {
+                if addr_type == AddressFamily::Inet4 as u8 as u32 {
                     let ip_addr = Ipv4Addr::new(addr_buf[0], addr_buf[1], addr_buf[2], addr_buf[3]);
                     Ok(SocketAddr::V4(SocketAddrV4::new(ip_addr, port as u16)))
-                } else if addr_type == 6 {
+                } else if addr_type == AddressFamily::Inet6 as u8 as u32 {
                     let ip_addr = Ipv6Addr::from(addr_buf);
                     Ok(SocketAddr::V6(SocketAddrV6::new(
                         ip_addr,
