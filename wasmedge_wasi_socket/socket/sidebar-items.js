@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["AddressFamily","AiFlags","AiProtocol","SocketOptLevel","SocketOptName","SocketType"],"struct":["IovecRead","IovecWrite","Socket","WasiAddress","WasiSockaddr"]};
+window.SIDEBAR_ITEMS = {"enum":["AddressFamily","AiFlags","AiProtocol","SocketOptLevel","SocketOptName","SocketType"],"struct":["IovecRead","IovecWrite","Socket","WasiAddress","WasiAddrinfo","WasiSockaddr"]};
