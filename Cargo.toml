@@ -1,6 +1,6 @@
 [package]
 name = "wasmedge_wasi_socket"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Yi <yi@secondstate.io>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -21,7 +21,7 @@ libc = "0.2.3"
 rand = "0.8.5"
 
 [features]
-default = ["built-in-dns", "wasmedge_0_12"]
+default = ["wasmedge_0_12"]
 wasmedge_0_12 = []
 built-in-dns = []
 wasi_poll = []
