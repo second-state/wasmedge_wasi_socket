@@ -318,8 +318,16 @@ impl AsRawFd for UdpSocket {
     }
 }
 
-#[cfg(not(feature = "built-in-dns"))]
 pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
+    let dns_server = std::env::var("DNS_SERVER");
+    if let Ok(dns_server) = dns_server {
+        nslookup_with_dns_server(&dns_server, node, service)
+    } else {
+        nslookup_with_host(node, service)
+    }
+}
+
+pub fn nslookup_with_host(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
     use socket::WasiAddrinfo;
     let hints: WasiAddrinfo = WasiAddrinfo::default();
     let mut sockaddrs = Vec::new();
@@ -367,11 +375,13 @@ pub fn nslookup(node: &str, service: &str) -> std::io::Result<Vec<SocketAddr>> {
     Ok(r_addrs)
 }
 
-#[cfg(feature = "built-in-dns")]
-pub fn nslookup(node: &str, _service: &str) -> std::io::Result<Vec<SocketAddr>> {
-    let dns_server = std::env::var("DNS_SERVER").unwrap_or("8.8.8.8:53".into());
+pub fn nslookup_with_dns_server(
+    dns_server: &str,
+    node: &str,
+    _service: &str,
+) -> std::io::Result<Vec<SocketAddr>> {
     let mut conn = TcpStream::connect(dns_server)?;
-    let timeout = std::time::Duration::from_secs(1);
+    let timeout = std::time::Duration::from_secs(5);
     let _ignore = conn.as_mut().set_send_timeout(Some(timeout));
     let _ignore = conn.as_mut().set_recv_timeout(Some(timeout));
 

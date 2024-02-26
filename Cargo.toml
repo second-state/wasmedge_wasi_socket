@@ -22,6 +22,5 @@ rand = "0.8.5"
 
 [features]
 default = []
-built-in-dns = []
 wasi_poll = []
 epoll = []
