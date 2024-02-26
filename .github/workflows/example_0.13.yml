@@ -70,7 +70,7 @@ jobs:
 
     - name: UDP Socket Example
       run: |
-        cargo build --target wasm32-wasi --example=udp_socket --release --no-default-features --features=built-in-dns
+        cargo build --target wasm32-wasi --example=udp_socket --release
         wasmedge target/wasm32-wasi/release/examples/udp_socket.wasm
 
     - name: DNS Example

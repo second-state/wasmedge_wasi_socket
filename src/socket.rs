@@ -101,7 +101,6 @@ impl Default for WasiSockaddr {
     }
 }
 
-#[cfg(not(feature = "built-in-dns"))]
 #[derive(Debug, Clone)]
 #[repr(C, packed(4))]
 pub struct WasiAddrinfo {
@@ -116,7 +115,6 @@ pub struct WasiAddrinfo {
     pub ai_next: *mut WasiAddrinfo,
 }
 
-#[cfg(not(feature = "built-in-dns"))]
 impl WasiAddrinfo {
     pub fn default() -> WasiAddrinfo {
         WasiAddrinfo {
