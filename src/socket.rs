@@ -359,17 +359,7 @@ mod wasi_sock {
             recv_len: *mut usize,
             oflags: *mut usize,
         ) -> u32;
-        #[cfg(not(feature = "wasmedge_0_12"))]
-        pub fn sock_recv_from(
-            fd: u32,
-            buf: *mut IovecRead,
-            buf_len: u32,
-            addr: *mut u8,
-            flags: u16,
-            recv_len: *mut usize,
-            oflags: *mut usize,
-        ) -> u32;
-        #[cfg(feature = "wasmedge_0_12")]
+
         pub fn sock_recv_from(
             fd: u32,
             buf: *mut IovecRead,
@@ -781,66 +771,6 @@ impl Socket {
         }
     }
 
-    #[cfg(not(feature = "wasmedge_0_12"))]
-    pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
-        let flags = 0;
-        let addr_buf = [0; 16];
-
-        let mut addr = WasiAddress {
-            buf: addr_buf.as_ptr(),
-            size: 16,
-        };
-
-        let mut recv_buf = IovecRead {
-            buf: buf.as_mut_ptr(),
-            size: buf.len(),
-        };
-
-        let mut recv_len: usize = 0;
-        let mut oflags: usize = 0;
-        unsafe {
-            let res = sock_recv_from(
-                self.as_raw_fd() as u32,
-                &mut recv_buf,
-                1,
-                &mut addr as *mut WasiAddress as *mut u8,
-                flags,
-                &mut recv_len,
-                &mut oflags,
-            );
-            if res == 0 {
-                let sin_family = {
-                    let mut d = [0, 0];
-                    d.clone_from_slice(&addr_buf[0..2]);
-                    u16::from_le_bytes(d)
-                };
-
-                let sin_port = {
-                    let mut d = [0, 0];
-                    d.clone_from_slice(&addr_buf[2..4]);
-                    u16::from_le_bytes(d)
-                };
-
-                let sin_addr = {
-                    if sin_family == 2 {
-                        let ip_addr =
-                            Ipv4Addr::new(addr_buf[4], addr_buf[5], addr_buf[6], addr_buf[7]);
-                        SocketAddr::V4(SocketAddrV4::new(ip_addr, sin_port))
-                    } else {
-                        // fixme
-                        let ip_addr = Ipv6Addr::from([0; 16]);
-                        SocketAddr::V6(SocketAddrV6::new(ip_addr, sin_port, 0, 0))
-                    }
-                };
-
-                Ok((recv_len, sin_addr))
-            } else {
-                Err(io::Error::from_raw_os_error(res as i32))
-            }
-        }
-    }
-
-    #[cfg(feature = "wasmedge_0_12")]
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         let flags = 0;
         let addr_buf = [0; 128];
@@ -894,7 +824,6 @@ impl Socket {
         }
     }
 
-    #[cfg(feature = "wasmedge_0_12")]
     pub fn recv_from_with_flags(
         &self,
         buf: &mut [MaybeUninit<u8>],
@@ -951,7 +880,6 @@ impl Socket {
         }
     }
 
-    #[cfg(feature = "wasmedge_0_12")]
     pub fn recv_from_vectored(
         &self,
         bufs: &mut [IovecRead],
