@@ -195,6 +195,7 @@ impl WasiAddrinfo {
                 max_reslen as u32,
                 &mut res_len,
             );
+
             match return_code {
                 0 => Ok(wasiaddrinfo_array[..res_len as usize].to_vec()),
                 e => Err(std::io::Error::from_raw_os_error(e as i32)),
@@ -209,16 +210,45 @@ pub struct IovecRead {
     pub size: usize,
 }
 
+impl From<libc::iovec> for IovecRead {
+    fn from(value: libc::iovec) -> Self {
+        IovecRead {
+            buf: value.iov_base.cast(),
+            size: value.iov_len,
+        }
+    }
+}
+
 #[repr(C)]
 pub struct IovecWrite {
     pub buf: *const u8,
     pub size: usize,
 }
 
+impl From<libc::iovec> for IovecWrite {
+    fn from(value: libc::iovec) -> Self {
+        IovecWrite {
+            buf: value.iov_base.cast(),
+            size: value.iov_len,
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 #[repr(u8, align(1))]
 pub enum SocketOptLevel {
     SolSocket = 0,
+}
+
+impl TryFrom<i32> for SocketOptLevel {
+    type Error = io::Error;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::SolSocket),
+            _ => Err(io::Error::from_raw_os_error(libc::EINVAL)),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -241,6 +271,37 @@ pub enum SocketOptName {
     SoBindToDevice = 14,
 }
 
+impl TryFrom<i32> for SocketOptName {
+    type Error = io::Error;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Self::SoReuseaddr),
+            1 => Ok(Self::SoType),
+            2 => Ok(Self::SoError),
+            3 => Ok(Self::SoDontroute),
+            4 => Ok(Self::SoBroadcast),
+            5 => Ok(Self::SoSndbuf),
+            6 => Ok(Self::SoRcvbuf),
+            7 => Ok(Self::SoKeepalive),
+            8 => Ok(Self::SoOobinline),
+            9 => Ok(Self::SoLinger),
+            10 => Ok(Self::SoRcvlowat),
+            11 => Ok(Self::SoRcvtimeo),
+            12 => Ok(Self::SoSndtimeo),
+            13 => Ok(Self::SoAcceptconn),
+            14 => Ok(Self::SoBindToDevice),
+
+            _ => Err(io::Error::from_raw_os_error(libc::EINVAL)),
+        }
+    }
+}
+
+pub const MSG_PEEK: u16 = 1; // __WASI_RIFLAGS_RECV_PEEK
+pub const MSG_WAITALL: u16 = 2; // __WASI_RIFLAGS_RECV_WAITALL
+
+pub const MSG_TRUNC: u16 = 1; // __WASI_ROFLAGS_RECV_DATA_TRUNCATED
+
 macro_rules! syscall {
     ($fn: ident ( $($arg: expr),* $(,)* ) ) => {{
         #[allow(unused_unsafe)]
@@ -251,6 +312,10 @@ macro_rules! syscall {
             Ok(res)
         }
     }};
+}
+
+fn fcntl_get(fd: RawFd, cmd: i32) -> io::Result<i32> {
+    syscall!(fcntl(fd, cmd))
 }
 
 fn fcntl_add(fd: RawFd, get_cmd: i32, set_cmd: i32, flag: i32) -> io::Result<()> {
@@ -534,6 +599,33 @@ impl Socket {
         }
     }
 
+    pub fn send_vectored(&self, bufs: &[io::IoSlice<'_>], flags: u16) -> io::Result<usize> {
+        unsafe {
+            let mut send_len: u32 = 0;
+
+            let mut write_bufs = Vec::with_capacity(bufs.len());
+            for b in bufs {
+                write_bufs.push(IovecWrite {
+                    buf: b.as_ptr().cast(),
+                    size: b.len(),
+                });
+            }
+
+            let res = sock_send(
+                self.as_raw_fd() as u32,
+                write_bufs.as_ptr(),
+                write_bufs.len() as u32,
+                flags,
+                &mut send_len,
+            );
+            if res == 0 {
+                Ok(send_len as usize)
+            } else {
+                Err(io::Error::from_raw_os_error(res as i32))
+            }
+        }
+    }
+
     pub fn send_to(&self, buf: &[u8], addr: SocketAddr) -> io::Result<usize> {
         let port = addr.port() as u32;
         let vaddr = match addr {
@@ -570,6 +662,49 @@ impl Socket {
         }
     }
 
+    pub fn send_to_vectored(
+        &self,
+        bufs: &[io::IoSlice<'_>],
+        addr: SocketAddr,
+        flags: u16,
+    ) -> io::Result<usize> {
+        let port = addr.port() as u32;
+        let vaddr = match addr {
+            SocketAddr::V4(ipv4) => ipv4.ip().octets().to_vec(),
+            SocketAddr::V6(ipv6) => ipv6.ip().octets().to_vec(),
+        };
+        let addr = WasiAddress {
+            buf: vaddr.as_ptr(),
+            size: vaddr.len(),
+        };
+
+        let mut write_bufs = Vec::with_capacity(bufs.len());
+        for b in bufs {
+            write_bufs.push(IovecWrite {
+                buf: b.as_ptr().cast(),
+                size: b.len(),
+            });
+        }
+
+        let mut send_len: u32 = 0;
+        unsafe {
+            let res = sock_send_to(
+                self.fd as u32,
+                write_bufs.as_ptr(),
+                write_bufs.len() as u32,
+                &addr as *const WasiAddress as *const u8,
+                port,
+                flags,
+                &mut send_len,
+            );
+            if res == 0 {
+                Ok(send_len as usize)
+            } else {
+                Err(io::Error::from_raw_os_error(res as i32))
+            }
+        }
+    }
+
     pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
         let flags = 0;
         let mut recv_len: usize = 0;
@@ -590,6 +725,56 @@ impl Socket {
             );
             if res == 0 {
                 Ok(recv_len)
+            } else {
+                Err(io::Error::from_raw_os_error(res as i32))
+            }
+        }
+    }
+
+    pub fn recv_with_flags(
+        &self,
+        buf: &mut [MaybeUninit<u8>],
+        flags: u16,
+    ) -> io::Result<(usize, usize)> {
+        let mut recv_len: usize = 0;
+        let mut oflags: usize = 0;
+        let mut vec = IovecRead {
+            buf: buf.as_mut_ptr().cast(),
+            size: buf.len(),
+        };
+
+        unsafe {
+            let res = sock_recv(
+                self.as_raw_fd() as u32,
+                &mut vec,
+                1,
+                flags,
+                &mut recv_len,
+                &mut oflags,
+            );
+            if res == 0 {
+                Ok((recv_len, oflags))
+            } else {
+                Err(io::Error::from_raw_os_error(res as i32))
+            }
+        }
+    }
+
+    pub fn recv_vectored(&self, bufs: &mut [IovecRead], flags: u16) -> io::Result<(usize, usize)> {
+        let mut recv_len: usize = 0;
+        let mut oflags: usize = 0;
+
+        unsafe {
+            let res = sock_recv(
+                self.as_raw_fd() as u32,
+                bufs.as_mut_ptr(),
+                bufs.len(),
+                flags,
+                &mut recv_len,
+                &mut oflags,
+            );
+            if res == 0 {
+                Ok((recv_len, oflags))
             } else {
                 Err(io::Error::from_raw_os_error(res as i32))
             }
@@ -707,6 +892,121 @@ impl Socket {
                 Err(io::Error::from_raw_os_error(res as i32))
             }
         }
+    }
+
+    #[cfg(feature = "wasmedge_0_12")]
+    pub fn recv_from_with_flags(
+        &self,
+        buf: &mut [MaybeUninit<u8>],
+        flags: u16,
+    ) -> io::Result<(usize, SocketAddr, usize)> {
+        let addr_buf = [0; 128];
+
+        let mut addr = WasiAddress {
+            buf: addr_buf.as_ptr(),
+            size: 128,
+        };
+
+        let mut recv_buf = IovecRead {
+            buf: buf.as_mut_ptr().cast(),
+            size: buf.len(),
+        };
+
+        let mut recv_len: usize = 0;
+        let mut oflags: usize = 0;
+        let mut sin_port: u32 = 0;
+        unsafe {
+            let res = sock_recv_from(
+                self.as_raw_fd() as u32,
+                &mut recv_buf,
+                1,
+                &mut addr as *mut WasiAddress as *mut u8,
+                flags,
+                &mut sin_port,
+                &mut recv_len,
+                &mut oflags,
+            );
+            if res == 0 {
+                let sin_family = {
+                    let mut d = [0, 0];
+                    d.clone_from_slice(&addr_buf[0..2]);
+                    u16::from_le_bytes(d) as u8
+                };
+                let sin_addr = if sin_family == AddressFamily::Inet4 as u8 {
+                    let ip_addr = Ipv4Addr::new(addr_buf[2], addr_buf[3], addr_buf[4], addr_buf[5]);
+                    SocketAddr::V4(SocketAddrV4::new(ip_addr, sin_port as u16))
+                } else if sin_family == AddressFamily::Inet6 as u8 {
+                    let mut ipv6_addr = [0u8; 16];
+                    ipv6_addr.copy_from_slice(&addr_buf[2..18]);
+                    let ip_addr = Ipv6Addr::from(ipv6_addr);
+                    SocketAddr::V6(SocketAddrV6::new(ip_addr, sin_port as u16, 0, 0))
+                } else {
+                    unimplemented!("Address family not supported by protocol");
+                };
+
+                Ok((recv_len, sin_addr, oflags))
+            } else {
+                Err(io::Error::from_raw_os_error(res as i32))
+            }
+        }
+    }
+
+    #[cfg(feature = "wasmedge_0_12")]
+    pub fn recv_from_vectored(
+        &self,
+        bufs: &mut [IovecRead],
+        flags: u16,
+    ) -> io::Result<(usize, SocketAddr, usize)> {
+        let addr_buf = [0; 128];
+
+        let mut addr = WasiAddress {
+            buf: addr_buf.as_ptr(),
+            size: 128,
+        };
+
+        let mut recv_len: usize = 0;
+        let mut oflags: usize = 0;
+        let mut sin_port: u32 = 0;
+        unsafe {
+            let res = sock_recv_from(
+                self.as_raw_fd() as u32,
+                bufs.as_mut_ptr(),
+                1,
+                &mut addr as *mut WasiAddress as *mut u8,
+                flags,
+                &mut sin_port,
+                &mut recv_len,
+                &mut oflags,
+            );
+            if res == 0 {
+                let sin_family = {
+                    let mut d = [0, 0];
+                    d.clone_from_slice(&addr_buf[0..2]);
+                    u16::from_le_bytes(d) as u8
+                };
+                let sin_addr = if sin_family == AddressFamily::Inet4 as u8 {
+                    let ip_addr = Ipv4Addr::new(addr_buf[2], addr_buf[3], addr_buf[4], addr_buf[5]);
+                    SocketAddr::V4(SocketAddrV4::new(ip_addr, sin_port as u16))
+                } else if sin_family == AddressFamily::Inet6 as u8 {
+                    let mut ipv6_addr = [0u8; 16];
+                    ipv6_addr.copy_from_slice(&addr_buf[2..18]);
+                    let ip_addr = Ipv6Addr::from(ipv6_addr);
+                    SocketAddr::V6(SocketAddrV6::new(ip_addr, sin_port as u16, 0, 0))
+                } else {
+                    unimplemented!("Address family not supported by protocol");
+                };
+
+                Ok((recv_len, sin_addr, oflags))
+            } else {
+                Err(io::Error::from_raw_os_error(res as i32))
+            }
+        }
+    }
+
+    pub fn nonblocking(&self) -> io::Result<bool> {
+        let fd = self.as_raw_fd();
+        let file_status_flags = fcntl_get(fd, libc::F_GETFL)?;
+        Ok((file_status_flags & libc::O_NONBLOCK) != 0)
     }
 
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
@@ -884,6 +1184,150 @@ impl Socket {
                 Err(io::Error::from_raw_os_error(error))
             } else {
                 Err(io::Error::from_raw_os_error(res as i32))
+            }
+        }
+    }
+
+    pub fn is_listener(&self) -> io::Result<bool> {
+        unsafe {
+            let fd = self.fd;
+            let mut val = 0;
+            let mut len = std::mem::size_of::<i32>() as u32;
+            let res = sock_getsockopt(
+                fd as u32,
+                SocketOptLevel::SolSocket as i32,
+                SocketOptName::SoAcceptconn as i32,
+                &mut val,
+                &mut len,
+            );
+            if res != 0 {
+                Err(io::Error::from_raw_os_error(res as i32))
+            } else {
+                Ok(val != 0)
+            }
+        }
+    }
+
+    pub fn r#type(&self) -> io::Result<SocketType> {
+        unsafe {
+            let fd = self.fd;
+            let mut val = 0;
+            let mut len = std::mem::size_of::<i32>() as u32;
+            let res = sock_getsockopt(
+                fd as u32,
+                SocketOptLevel::SolSocket as i32,
+                SocketOptName::SoType as i32,
+                &mut val,
+                &mut len,
+            );
+            if res != 0 {
+                Err(io::Error::from_raw_os_error(res as i32))
+            } else {
+                match val {
+                    1 => Ok(SocketType::Datagram),
+                    2 => Ok(SocketType::Stream),
+                    _ => Err(io::Error::from_raw_os_error(libc::EINVAL)),
+                }
+            }
+        }
+    }
+
+    pub fn broadcast(&self) -> io::Result<bool> {
+        unsafe {
+            let fd = self.fd;
+            let mut val = 0;
+            let mut len = std::mem::size_of::<i32>() as u32;
+            let res = sock_getsockopt(
+                fd as u32,
+                SocketOptLevel::SolSocket as i32,
+                SocketOptName::SoBroadcast as i32,
+                &mut val,
+                &mut len,
+            );
+            if res != 0 {
+                Err(io::Error::from_raw_os_error(res as i32))
+            } else {
+                Ok(val != 0)
+            }
+        }
+    }
+
+    pub fn keepalive(&self) -> io::Result<bool> {
+        unsafe {
+            let fd = self.fd;
+            let mut val = 0;
+            let mut len = std::mem::size_of::<i32>() as u32;
+            let res = sock_getsockopt(
+                fd as u32,
+                SocketOptLevel::SolSocket as i32,
+                SocketOptName::SoKeepalive as i32,
+                &mut val,
+                &mut len,
+            );
+            if res != 0 {
+                Err(io::Error::from_raw_os_error(res as i32))
+            } else {
+                Ok(val != 0)
+            }
+        }
+    }
+
+    pub fn recv_buffer_size(&self) -> io::Result<usize> {
+        unsafe {
+            let fd = self.fd;
+            let mut val = 0;
+            let mut len = std::mem::size_of::<i32>() as u32;
+            let res = sock_getsockopt(
+                fd as u32,
+                SocketOptLevel::SolSocket as i32,
+                SocketOptName::SoRcvbuf as i32,
+                &mut val,
+                &mut len,
+            );
+            if res != 0 {
+                Err(io::Error::from_raw_os_error(res as i32))
+            } else {
+                Ok(val as usize)
+            }
+        }
+    }
+
+    pub fn send_buffer_size(&self) -> io::Result<usize> {
+        unsafe {
+            let fd = self.fd;
+            let mut val = 0;
+            let mut len = std::mem::size_of::<i32>() as u32;
+            let res = sock_getsockopt(
+                fd as u32,
+                SocketOptLevel::SolSocket as i32,
+                SocketOptName::SoSndbuf as i32,
+                &mut val,
+                &mut len,
+            );
+            if res != 0 {
+                Err(io::Error::from_raw_os_error(res as i32))
+            } else {
+                Ok(val as usize)
+            }
+        }
+    }
+
+    pub fn reuse_address(&self) -> io::Result<bool> {
+        unsafe {
+            let fd = self.fd;
+            let mut val = 0;
+            let mut len = std::mem::size_of::<i32>() as u32;
+            let res = sock_getsockopt(
+                fd as u32,
+                SocketOptLevel::SolSocket as i32,
+                SocketOptName::SoReuseaddr as i32,
+                &mut val,
+                &mut len,
+            );
+            if res != 0 {
+                Err(io::Error::from_raw_os_error(res as i32))
+            } else {
+                Ok(val != 0)
             }
         }
     }
