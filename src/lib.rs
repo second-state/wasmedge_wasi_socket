@@ -8,7 +8,7 @@ pub use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
 use std::{
     io::{self, Read, Write},
     net::{SocketAddrV4, SocketAddrV6},
-    os::wasi::prelude::{AsRawFd, FromRawFd, IntoRawFd},
+    os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd},
 };
 
 #[derive(Debug)]
@@ -25,6 +25,12 @@ impl AsRef<socket::Socket> for TcpStream {
 impl AsMut<socket::Socket> for TcpStream {
     fn as_mut(&mut self) -> &mut socket::Socket {
         &mut self.s
+    }
+}
+
+impl AsFd for TcpStream {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(self.as_raw_fd()) }
     }
 }
 
@@ -47,6 +53,12 @@ impl AsMut<socket::Socket> for TcpListener {
     }
 }
 
+impl AsFd for TcpListener {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(self.as_raw_fd()) }
+    }
+}
+
 #[derive(Debug)]
 pub struct UdpSocket {
     s: socket::Socket,
@@ -61,6 +73,12 @@ impl AsRef<socket::Socket> for UdpSocket {
 impl AsMut<socket::Socket> for UdpSocket {
     fn as_mut(&mut self) -> &mut socket::Socket {
         &mut self.s
+    }
+}
+
+impl AsFd for UdpSocket {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(self.as_raw_fd()) }
     }
 }
 
