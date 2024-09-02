@@ -31,8 +31,7 @@ jobs:
     - name: Install WasmEdge
       run: |
         VERSION=0.13.5
-        curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | sudo bash -s -- -e all --version=$VERSION --tf-version=$VERSION --tf-deps-version=$VERSION --tf-tools-version=$VERSION --image-version=$VERSION  -p /usr/local
-
+        curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | sudo bash -s -- --version=$VERSION -p /usr/local
     # Disable this example due to it relies on wasmedge_http_req, which is a cyclic dependence
     # - name: HTTP client example
     #   run: |
