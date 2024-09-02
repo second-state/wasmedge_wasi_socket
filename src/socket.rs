@@ -1,7 +1,7 @@
 use std::io;
 use std::mem::MaybeUninit;
 use std::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4, SocketAddrV6};
-use std::os::wasi::prelude::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
+use std::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 
 #[derive(Copy, Clone, Debug)]
 #[repr(u8, align(1))]
@@ -1304,6 +1304,12 @@ impl Drop for Socket {
 impl AsRawFd for Socket {
     fn as_raw_fd(&self) -> RawFd {
         self.fd
+    }
+}
+
+impl AsFd for Socket {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(self.as_raw_fd()) }
     }
 }
 
